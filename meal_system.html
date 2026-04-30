@@ -62,19 +62,34 @@
         console.log("Supabase URL:", SUPABASE_URL);
         console.log("Supabase Anon Key存在:", !!SUPABASE_ANON_KEY);
         
-        let supabase;
-        // 检查 Supabase 库是否加载成功
-        if (typeof window.supabase !== 'undefined' && window.supabase.createClient) {
-            try {
-                supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-                console.log("Supabase客户端创建成功");
-            } catch(e) {
-                console.error("创建客户端失败:", e);
-                alert("Supabase客户端初始化失败，请检查控制台");
+        let supabase = null;
+        
+        // 正确初始化 Supabase 客户端
+        function initSupabase() {
+            if (typeof window.supabase !== 'undefined' && window.supabase.createClient) {
+                try {
+                    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                    console.log("✅ Supabase客户端创建成功");
+                    return true;
+                } catch(e) {
+                    console.error("创建客户端失败:", e);
+                    return false;
+                }
+            } else {
+                console.error("❌ Supabase 库未加载，请检查网络或CDN");
+                return false;
             }
-        } else {
-            console.error("Supabase 库未加载，请检查网络或CDN");
-            alert("错误：Supabase 库加载失败，请检查网络后刷新页面重试。");
+        }
+        
+        const initOk = initSupabase();
+        if (!initOk) {
+            window.addEventListener('load', () => {
+                const msgDiv = document.getElementById('diagnosticMsg');
+                if (msgDiv) {
+                    msgDiv.innerHTML = "❌ 无法加载 Supabase 客户端，请刷新页面或检查网络。";
+                    msgDiv.className = "error-msg-box";
+                }
+            });
         }
         
         const PRICES = { breakfast: 1.0, lunch: 3.0, dinner: 2.0 };
@@ -91,7 +106,6 @@
                 return false;
             }
             try {
-                // 先尝试获取服务器时间（简单测试）
                 const { data, error } = await supabase.from('users').select('username').limit(1);
                 if (error) {
                     if (error.message.includes("relation") && error.message.includes("does not exist")) {
