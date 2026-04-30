@@ -63,12 +63,18 @@
         console.log("Supabase Anon Key存在:", !!SUPABASE_ANON_KEY);
         
         let supabase;
-        try {
-            supabase = supabaseJs.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-            console.log("Supabase客户端创建成功");
-        } catch(e) {
-            console.error("创建客户端失败:", e);
-            alert("Supabase客户端初始化失败，请检查控制台");
+        // 检查 Supabase 库是否加载成功
+        if (typeof window.supabase !== 'undefined' && window.supabase.createClient) {
+            try {
+                supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                console.log("Supabase客户端创建成功");
+            } catch(e) {
+                console.error("创建客户端失败:", e);
+                alert("Supabase客户端初始化失败，请检查控制台");
+            }
+        } else {
+            console.error("Supabase 库未加载，请检查网络或CDN");
+            alert("错误：Supabase 库加载失败，请检查网络后刷新页面重试。");
         }
         
         const PRICES = { breakfast: 1.0, lunch: 3.0, dinner: 2.0 };
@@ -79,6 +85,11 @@
             if (!msgDiv) return;
             msgDiv.innerHTML = "⏳ 正在测试连接...";
             msgDiv.className = "info-msg";
+            if (!supabase) {
+                msgDiv.innerHTML = "❌ Supabase客户端未初始化，请刷新页面重试。";
+                msgDiv.className = "error-msg-box";
+                return false;
+            }
             try {
                 // 先尝试获取服务器时间（简单测试）
                 const { data, error } = await supabase.from('users').select('username').limit(1);
@@ -106,6 +117,7 @@
         }
         
         async function registerUser(username, password) {
+            if (!supabase) return { ok: false, msg: '系统未初始化，请刷新页面' };
             const { data: existing, error: checkErr } = await supabase
                 .from('users')
                 .select('username')
@@ -127,6 +139,7 @@
         }
         
         async function loginUser(username, password) {
+            if (!supabase) return { ok: false, msg: '系统未初始化，请刷新页面' };
             const { data, error } = await supabase
                 .from('users')
                 .select('username')
@@ -142,6 +155,7 @@
         }
         
         async function getUserRecordOnDate(username, date) {
+            if (!supabase) return { breakfast:0, lunch:0, dinner:0 };
             const { data, error } = await supabase
                 .from('meal_records')
                 .select('breakfast, lunch, dinner')
@@ -153,6 +167,7 @@
         }
         
         async function updateRecord(username, date, breakfast, lunch, dinner) {
+            if (!supabase) return;
             const { data: existing } = await supabase
                 .from('meal_records')
                 .select('id')
@@ -172,6 +187,7 @@
         }
         
         async function getAllUsers() {
+            if (!supabase) return [];
             const { data, error } = await supabase
                 .from('users')
                 .select('username')
@@ -200,6 +216,7 @@
         }
         
         async function getMonthStats(yearMonth) {
+            if (!supabase) return { stats: [], totalAll: 0 };
             const users = await getAllUsers();
             const { data: allRecords, error } = await supabase
                 .from('meal_records')
@@ -433,10 +450,12 @@
         }
         
         // 手动测试连接
-        document.getElementById('btnTestConnection').onclick = testSupabaseConnection;
+        const testBtn = document.getElementById('btnTestConnection');
+        if (testBtn) testBtn.onclick = testSupabaseConnection;
         
         // 登录事件
-        document.getElementById('btnLogin').onclick = async () => {
+        const loginBtn = document.getElementById('btnLogin');
+        if (loginBtn) loginBtn.onclick = async () => {
             let user = document.getElementById('loginUsername').value.trim();
             let pwd = document.getElementById('loginPassword').value;
             let loginErrorDiv = document.getElementById('loginError');
@@ -458,10 +477,13 @@
             }
         };
         
-        document.getElementById('btnShowRegister').onclick = () => { loginForm.classList.add('hidden'); registerForm.classList.remove('hidden'); };
-        document.getElementById('btnBackLogin').onclick = () => { registerForm.classList.add('hidden'); loginForm.classList.remove('hidden'); };
+        const showRegisterBtn = document.getElementById('btnShowRegister');
+        if (showRegisterBtn) showRegisterBtn.onclick = () => { loginForm.classList.add('hidden'); registerForm.classList.remove('hidden'); };
+        const backLoginBtn = document.getElementById('btnBackLogin');
+        if (backLoginBtn) backLoginBtn.onclick = () => { registerForm.classList.add('hidden'); loginForm.classList.remove('hidden'); };
         
-        document.getElementById('btnRegister').onclick = async () => {
+        const registerBtn = document.getElementById('btnRegister');
+        if (registerBtn) registerBtn.onclick = async () => {
             let user = document.getElementById('regUsername').value.trim();
             let pwd = document.getElementById('regPassword').value;
             let pwd2 = document.getElementById('regConfirmPwd').value;
@@ -486,9 +508,12 @@
         const savedUser = localStorage.getItem('savedUsername');
         const savedPwd = localStorage.getItem('savedPassword');
         if (savedUser && savedPwd) {
-            document.getElementById('loginUsername').value = savedUser;
-            document.getElementById('loginPassword').value = savedPwd;
-            document.getElementById('rememberCheckbox').checked = true;
+            const userInput = document.getElementById('loginUsername');
+            const pwdInput = document.getElementById('loginPassword');
+            if (userInput) userInput.value = savedUser;
+            if (pwdInput) pwdInput.value = savedPwd;
+            const rememberCheckbox = document.getElementById('rememberCheckbox');
+            if (rememberCheckbox) rememberCheckbox.checked = true;
         }
         
         // 页面加载后自动测试一次连接
