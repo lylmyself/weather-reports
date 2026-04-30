@@ -50,41 +50,62 @@
         .error-msg{color:#b91c1c;background:#fee2e2;border-radius:40px;padding:8px 16px;margin-top:12px;font-size:13px}
         .hidden{display:none}
         footer{text-align:center;font-size:12px;color:#94a3b8;margin-top:30px}
-        .diagnostic{background:#fef9c3;border-left:4px solid #eab308;padding:10px;margin-bottom:20px;font-size:13px;text-align:left}
+        .info-msg{background:#e6f7e6;border-left:4px solid #10b981;padding:10px;margin-bottom:20px;font-size:13px;text-align:left}
+        .error-msg-box{background:#fee2e2;border-left:4px solid #dc2626;padding:10px;margin-bottom:20px;font-size:13px;text-align:left}
         @media(max-width:700px){.app-container{padding:18px}.stats-card{flex-direction:column;align-items:stretch}}
     </style>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
+        console.log("脚本开始执行");
         const SUPABASE_URL = "https://hcaeqgdaggzxqcdisukq.supabase.co";
         const SUPABASE_ANON_KEY = "sb_publishable_DA9bpv1TSbVdTWZXrpGreA_0aafyDLE";
         console.log("Supabase URL:", SUPABASE_URL);
-        console.log("Supabase Anon Key:", SUPABASE_ANON_KEY ? "已设置" : "未设置");
-        const supabase = supabaseJs.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        console.log("Supabase Anon Key存在:", !!SUPABASE_ANON_KEY);
+        
+        let supabase;
+        try {
+            supabase = supabaseJs.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            console.log("Supabase客户端创建成功");
+        } catch(e) {
+            console.error("创建客户端失败:", e);
+            alert("Supabase客户端初始化失败，请检查控制台");
+        }
         
         const PRICES = { breakfast: 1.0, lunch: 3.0, dinner: 2.0 };
         
-        // 诊断函数：测试Supabase连接和表是否存在
+        // 诊断函数：测试Supabase连接和表
         async function testSupabaseConnection() {
+            const msgDiv = document.getElementById('diagnosticMsg');
+            if (!msgDiv) return;
+            msgDiv.innerHTML = "⏳ 正在测试连接...";
+            msgDiv.className = "info-msg";
             try {
-                // 尝试查询users表（限制1条）
-                const { data, error } = await supabase
-                    .from('users')
-                    .select('username')
-                    .limit(1);
+                // 先尝试获取服务器时间（简单测试）
+                const { data, error } = await supabase.from('users').select('username').limit(1);
                 if (error) {
                     if (error.message.includes("relation") && error.message.includes("does not exist")) {
-                        return { ok: false, msg: "❌ 数据库表 'users' 不存在，请在 Supabase SQL Editor 中执行建表语句。" };
+                        msgDiv.innerHTML = "❌ 数据库表 'users' 不存在！请在 Supabase SQL Editor 中执行建表语句。";
+                        msgDiv.className = "error-msg-box";
+                        console.error("表不存在错误:", error);
+                        return false;
                     }
-                    return { ok: false, msg: `❌ Supabase 错误: ${error.message}` };
+                    msgDiv.innerHTML = `❌ Supabase 查询错误: ${error.message}`;
+                    msgDiv.className = "error-msg-box";
+                    console.error("查询错误:", error);
+                    return false;
                 }
-                return { ok: true, msg: "✅ Supabase 连接正常，表已就绪。" };
-            } catch (err) {
-                return { ok: false, msg: `❌ 网络错误: ${err.message}。请检查网络或 Supabase URL 是否正确。` };
+                msgDiv.innerHTML = "✅ Supabase 连接正常，表已就绪。可以正常注册和登录。";
+                msgDiv.className = "info-msg";
+                return true;
+            } catch(err) {
+                msgDiv.innerHTML = `❌ 网络错误: ${err.message}。请检查网络或 Supabase URL 是否正确。`;
+                msgDiv.className = "error-msg-box";
+                console.error("连接异常:", err);
+                return false;
             }
         }
         
         async function registerUser(username, password) {
-            // 先检查用户名是否已存在
             const { data: existing, error: checkErr } = await supabase
                 .from('users')
                 .select('username')
@@ -323,7 +344,7 @@
                 closeBtn.onclick = closeModal;
                 cancelBtn.onclick = closeModal;
                 modal.onclick = (e) => { if (e.target === modal) closeModal(); };
-            });
+            }).catch(err => { console.error("获取记录失败", err); alert("获取订餐记录失败，请检查网络或数据库。"); });
         }
         
         function printTable(title, headers, rows, footRow) {
@@ -411,22 +432,8 @@
             document.getElementById('logoutBtn').onclick = () => { currentUser = null; authView.classList.remove('hidden'); mainView.classList.add('hidden'); loginForm.classList.remove('hidden'); registerForm.classList.add('hidden'); };
         }
         
-        // 显示诊断结果
-        const diagnosticDiv = document.getElementById('diagnosticMsg');
-        testSupabaseConnection().then(result => {
-            if (diagnosticDiv) {
-                diagnosticDiv.innerHTML = result.msg;
-                if (!result.ok) {
-                    diagnosticDiv.style.background = "#fee2e2";
-                    diagnosticDiv.style.borderLeftColor = "#dc2626";
-                } else {
-                    diagnosticDiv.style.background = "#e6f7e6";
-                    diagnosticDiv.style.borderLeftColor = "#10b981";
-                }
-            } else {
-                console.log(result.msg);
-            }
-        });
+        // 手动测试连接
+        document.getElementById('btnTestConnection').onclick = testSupabaseConnection;
         
         // 登录事件
         document.getElementById('btnLogin').onclick = async () => {
@@ -484,6 +491,12 @@
             document.getElementById('rememberCheckbox').checked = true;
         }
         
+        // 页面加载后自动测试一次连接
+        window.addEventListener('load', () => {
+            console.log("页面加载完成，开始自动测试Supabase连接");
+            testSupabaseConnection();
+        });
+        
         authView.classList.remove('hidden');
         mainView.classList.add('hidden');
     </script>
@@ -492,7 +505,8 @@
 <div id="app">
     <div id="authView" class="auth-panel">
         <h2>🍜 单位订餐系统</h2>
-        <div id="diagnosticMsg" class="diagnostic">🔍 正在检测 Supabase 连接...</div>
+        <div id="diagnosticMsg" class="info-msg">🔍 正在检测 Supabase 连接...</div>
+        <button id="btnTestConnection" class="btn-sm">🔄 手动测试连接</button>
         <div id="loginForm">
             <div class="form-group">
                 <label>用户名</label>
