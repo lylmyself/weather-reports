@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>单位订餐系统（共享数据库版）</title>
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box;font-family:system-ui,'Segoe UI',Roboto,sans-serif}
+        body{background:#eef2f7;padding:20px}
+        .app-container{max-width:1400px;margin:0 auto;background:#fff;border-radius:28px;box-shadow:0 20px 35px -12px rgba(0,0,0,0.15);padding:24px 28px 32px}
+        .auth-panel{max-width:440px;margin:60px auto;background:#fff;border-radius:36px;padding:36px 32px;box-shadow:0 20px 35px -10px rgba(0,0,0,0.2);text-align:center}
+        .auth-panel h2{margin-top:0;color:#1e293b}
+        .form-group{margin-bottom:20px;text-align:left}
+        .form-group label{display:block;font-weight:600;margin-bottom:8px;color:#1e293b}
+        .form-group input{width:100%;padding:12px 16px;border:1px solid #cbd5e1;border-radius:28px;font-size:15px}
+        .form-group input:focus{outline:none;border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,0.2)}
+        button{background:#3b82f6;color:#fff;border:none;padding:10px 24px;border-radius:40px;font-weight:600;cursor:pointer;font-size:14px;margin:4px 6px}
+        button:hover{background:#2563eb}
+        .btn-outline{background:#fff;color:#3b82f6;border:1px solid #3b82f6}
+        .btn-outline:hover{background:#eff6ff}
+        .btn-danger{background:#ef4444}
+        .btn-danger:hover{background:#dc2626}
+        .btn-sm{padding:6px 16px;font-size:13px}
+        .btn-success{background:#10b981}
+        .btn-success:hover{background:#059669}
+        .main-header{display:flex;justify-content:space-between;align-items:baseline;border-bottom:2px solid #e2e8f0;padding-bottom:14px;margin-bottom:24px;flex-wrap:wrap;gap:12px}
+        .user-greeting{font-weight:600;background:#eef2ff;padding:6px 18px;border-radius:40px;font-size:14px}
+        .stats-card{background:#f8fafc;border-radius:24px;padding:16px 24px;margin-bottom:28px;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:16px}
+        .month-selector{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+        .month-input{width:140px;padding:8px 14px;border-radius:40px;border:1px solid #cbd5e1;font-size:14px}
+        .total-cost{font-size:1.25rem;font-weight:700;background:#dbeafe;padding:6px 20px;border-radius:40px;color:#1e40af}
+        .section{margin-top:32px;margin-bottom:36px}
+        .section-title{font-size:1.3rem;font-weight:700;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
+        .toolbar{display:flex;gap:10px;flex-wrap:wrap}
+        .table-wrapper{overflow-x:auto;border-radius:20px;border:1px solid #e2e8f0;background:#fff;max-height:500px;overflow-y:auto}
+        table{width:100%;border-collapse:collapse;font-size:14px}
+        th{background:#f1f5f9;padding:12px 10px;position:sticky;top:0;border-bottom:1px solid #cbd5e1}
+        td,th{padding:10px 8px;text-align:center;border-bottom:1px solid #eef2ff}
+        tfoot td{background:#eef2ff;font-weight:bold;border-top:2px solid #cbd5e1}
+        tr:hover{background:#fefce8}
+        .modal-mask{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;z-index:1000}
+        .modal-container{background:#fff;width:90%;max-width:500px;border-radius:36px;overflow:hidden;display:flex;flex-direction:column}
+        .modal-header{padding:18px 24px;background:#f8fafc;border-bottom:1px solid #e2e8f0;font-weight:700;font-size:1.2rem;display:flex;justify-content:space-between}
+        .modal-body{padding:16px 20px;overflow-y:auto;flex:1}
+        .meal-row{display:flex;align-items:center;gap:16px;padding:12px 0;border-bottom:1px solid #edf2f7;flex-wrap:wrap}
+        .meal-name{width:110px;font-weight:600}
+        .meal-spin-group{display:flex;gap:20px;flex-wrap:wrap}
+        .spin-item{background:#f1f5f9;padding:5px 12px;border-radius:40px;display:flex;align-items:center;gap:8px}
+        .spin-input{width:70px;padding:6px;border-radius:28px;border:1px solid #cbd5e1;text-align:center}
+        .modal-footer{padding:16px 24px;border-top:1px solid #e2e8f0;display:flex;justify-content:flex-end;gap:12px;background:#fff}
+        .error-msg{color:#b91c1c;background:#fee2e2;border-radius:40px;padding:8px 16px;margin-top:12px;font-size:13px}
+        .hidden{display:none}
+        footer{text-align:center;font-size:12px;color:#94a3b8;margin-top:30px}
+        .info-msg{background:#e6f7e6;border-left:4px solid #10b981;padding:10px;margin-bottom:20px;font-size:13px;text-align:left}
+        .error-msg-box{background:#fee2e2;border-left:4px solid #dc2626;padding:10px;margin-bottom:20px;font-size:13px;text-align:left}
+        @media(max-width:700px){.app-container{padding:18px}.stats-card{flex-direction:column;align-items:stretch}}
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+        console.log("脚本开始执行");
+        const SUPABASE_URL = "https://hcaeqgdaggzxqcdisukq.supabase.co";
+        const SUPABASE_ANON_KEY = "sb_publishable_DA9bpv1TSbVdTWZXrpGreA_0aafyDLE";
+        console.log("Supabase URL:", SUPABASE_URL);
+        console.log("Supabase Anon Key存在:", !!SUPABASE_ANON_KEY);
+        
+        let supabase;
+        // 检查 Supabase 库是否加载成功
+        if (typeof window.supabase !== 'undefined' && window.supabase.createClient) {
+            try {
+                supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                console.log("Supabase客户端创建成功");
+            } catch(e) {
+                console.error("创建客户端失败:", e);
+                alert("Supabase客户端初始化失败，请检查控制台");
+            }
+        } else {
+            console.error("Supabase 库未加载，请检查网络或CDN");
+            alert("错误：Supabase 库加载失败，请检查网络后刷新页面重试。");
+        }
+        
+        const PRICES = { breakfast: 1.0, lunch: 3.0, dinner: 2.0 };
+        
+        // 诊断函数：测试Supabase连接和表
+        async function testSupabaseConnection() {
+            const msgDiv = document.getElementById('diagnosticMsg');
+            if (!msgDiv) return;
+            msgDiv.innerHTML = "⏳ 正在测试连接...";
+            msgDiv.className = "info-msg";
+            if (!supabase) {
+                msgDiv.innerHTML = "❌ Supabase客户端未初始化，请刷新页面重试。";
+                msgDiv.className = "error-msg-box";
+                return false;
+            }
+            try {
+                // 先尝试获取服务器时间（简单测试）
+                const { data, error } = await supabase.from('users').select('username').limit(1);
+                if (error) {
+                    if (error.message.includes("relation") && error.message.includes("does not exist")) {
+                        msgDiv.innerHTML = "❌ 数据库表 'users' 不存在！请在 Supabase SQL Editor 中执行建表语句。";
+                        msgDiv.className = "error-msg-box";
+                        console.error("表不存在错误:", error);
+                        return false;
+                    }
+                    msgDiv.innerHTML = `❌ Supabase 查询错误: ${error.message}`;
+                    msgDiv.className = "error-msg-box";
+                    console.error("查询错误:", error);
+                    return false;
+                }
+                msgDiv.innerHTML = "✅ Supabase 连接正常，表已就绪。可以正常注册和登录。";
+                msgDiv.className = "info-msg";
+                return true;
+            } catch(err) {
+                msgDiv.innerHTML = `❌ 网络错误: ${err.message}。请检查网络或 Supabase URL 是否正确。`;
+                msgDiv.className = "error-msg-box";
+                console.error("连接异常:", err);
+                return false;
+            }
+        }
+        
+        async function registerUser(username, password) {
+            if (!supabase) return { ok: false, msg: '系统未初始化，请刷新页面' };
+            const { data: existing, error: checkErr } = await supabase
+                .from('users')
+                .select('username')
+                .eq('username', username)
+                .maybeSingle();
+            if (checkErr && checkErr.code !== 'PGRST116') {
+                console.error("注册检查错误:", checkErr);
+                return { ok: false, msg: `系统错误: ${checkErr.message}` };
+            }
+            if (existing) return { ok: false, msg: '用户名已存在' };
+            const { error: insertErr } = await supabase
+                .from('users')
+                .insert([{ username, password }]);
+            if (insertErr) {
+                console.error("插入错误:", insertErr);
+                return { ok: false, msg: `注册失败: ${insertErr.message}` };
+            }
+            return { ok: true };
+        }
+        
+        async function loginUser(username, password) {
+            if (!supabase) return { ok: false, msg: '系统未初始化，请刷新页面' };
+            const { data, error } = await supabase
+                .from('users')
+                .select('username')
+                .eq('username', username)
+                .eq('password', password)
+                .maybeSingle();
+            if (error) {
+                console.error("登录查询错误:", error);
+                return { ok: false, msg: `登录错误: ${error.message}` };
+            }
+            if (!data) return { ok: false, msg: '用户名或密码错误' };
+            return { ok: true, username: data.username };
+        }
+        
+        async function getUserRecordOnDate(username, date) {
+            if (!supabase) return { breakfast:0, lunch:0, dinner:0 };
+            const { data, error } = await supabase
+                .from('meal_records')
+                .select('breakfast, lunch, dinner')
+                .eq('username', username)
+                .eq('date', date)
+                .maybeSingle();
+            if (error || !data) return { breakfast:0, lunch:0, dinner:0 };
+            return { breakfast: data.breakfast, lunch: data.lunch, dinner: data.dinner };
+        }
+        
+        async function updateRecord(username, date, breakfast, lunch, dinner) {
+            if (!supabase) return;
+            const { data: existing } = await supabase
+                .from('meal_records')
+                .select('id')
+                .eq('username', username)
+                .eq('date', date)
+                .maybeSingle();
+            if (existing) {
+                await supabase
+                    .from('meal_records')
+                    .update({ breakfast, lunch, dinner })
+                    .eq('id', existing.id);
+            } else {
+                await supabase
+                    .from('meal_records')
+                    .insert([{ username, date, breakfast, lunch, dinner }]);
+            }
+        }
+        
+        async function getAllUsers() {
+            if (!supabase) return [];
+            const { data, error } = await supabase
+                .from('users')
+                .select('username')
+                .order('username');
+            if (error) {
+                console.error("获取用户列表错误:", error);
+                return [];
+            }
+            return data.map(u => ({ username: u.username }));
+        }
+        
+        async function getAllTodayRecords() {
+            const today = getTodayStr();
+            const users = await getAllUsers();
+            const records = [];
+            for (let u of users) {
+                const rec = await getUserRecordOnDate(u.username, today);
+                records.push({
+                    username: u.username,
+                    breakfast: rec.breakfast,
+                    lunch: rec.lunch,
+                    dinner: rec.dinner
+                });
+            }
+            return records;
+        }
+        
+        async function getMonthStats(yearMonth) {
+            if (!supabase) return { stats: [], totalAll: 0 };
+            const users = await getAllUsers();
+            const { data: allRecords, error } = await supabase
+                .from('meal_records')
+                .select('username, date, breakfast, lunch, dinner')
+                .gte('date', yearMonth + '-01')
+                .lte('date', yearMonth + '-31');
+            if (error) return { stats: [], totalAll: 0 };
+            let stats = [];
+            let totalAll = 0;
+            for (let u of users) {
+                let breakfastTotal = 0, lunchTotal = 0, dinnerTotal = 0, money = 0;
+                const userRecs = allRecords.filter(r => r.username === u.username);
+                for (let rec of userRecs) {
+                    breakfastTotal += rec.breakfast;
+                    lunchTotal += rec.lunch;
+                    dinnerTotal += rec.dinner;
+                    money += rec.breakfast * PRICES.breakfast + rec.lunch * PRICES.lunch + rec.dinner * PRICES.dinner;
+                }
+                stats.push({
+                    username: u.username,
+                    breakfast_total: breakfastTotal,
+                    lunch_total: lunchTotal,
+                    dinner_total: dinnerTotal,
+                    total_money: money
+                });
+                totalAll += money;
+            }
+            return { stats, totalAll };
+        }
+        
+        function getTodayStr() {
+            let d = new Date();
+            return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+        }
+        
+        let currentUser = null;
+        const authView = document.getElementById('authView');
+        const mainView = document.getElementById('mainView');
+        const loginForm = document.getElementById('loginForm');
+        const registerForm = document.getElementById('registerForm');
+        const welcomeSpan = document.getElementById('welcomeUser');
+        const monthPicker = document.getElementById('monthPicker');
+        const monthTotalSpan = document.getElementById('monthTotalAmount');
+        const todayDateSpan = document.getElementById('todayDateLabel');
+        const todayBody = document.getElementById('todayTableBody');
+        const todayFoot = document.getElementById('todayTableFoot');
+        const monthBody = document.getElementById('monthTableBody');
+        const monthFoot = document.getElementById('monthTableFoot');
+        let currentMonthCache = null;
+        
+        async function renderToday() {
+            let records = await getAllTodayRecords();
+            todayBody.innerHTML = '';
+            if (records.length === 0) { todayBody.innerHTML = '<tr><td colspan="5">暂无用户</td></tr>'; todayFoot.innerHTML = ''; return; }
+            let sumBreakfast = 0, sumLunch = 0, sumDinner = 0, sumMoney = 0;
+            for (let r of records) {
+                let total = r.breakfast*1 + r.lunch*3 + r.dinner*2;
+                sumBreakfast += r.breakfast;
+                sumLunch += r.lunch;
+                sumDinner += r.dinner;
+                sumMoney += total;
+                let row = `<tr><td>${escapeHtml(r.username)}</td><td>${r.breakfast}</td><td>${r.lunch}</td><td>${r.dinner}</td><td>¥${total.toFixed(2)}</td></tr>`;
+                todayBody.insertAdjacentHTML('beforeend', row);
+            }
+            todayFoot.innerHTML = `<tr style="background:#eef2ff;font-weight:bold"><td>总计</td><td>${sumBreakfast}</td><td>${sumLunch}</td><td>${sumDinner}</td><td>¥${sumMoney.toFixed(2)}</td></tr>`;
+            todayDateSpan.innerText = getTodayStr();
+        }
+        
+        async function renderMonth(yearMonth) {
+            if (!yearMonth || !/^\d{4}-\d{2}$/.test(yearMonth)) {
+                monthBody.innerHTML = '<tr><td colspan="5">月份格式错误</td></tr>';
+                monthFoot.innerHTML = '';
+                return;
+            }
+            let { stats, totalAll } = await getMonthStats(yearMonth);
+            currentMonthCache = stats;
+            monthBody.innerHTML = '';
+            if (stats.length === 0) { monthBody.innerHTML = '<tr><td colspan="5">暂无数据</td></tr>'; monthFoot.innerHTML = ''; return; }
+            let sumB = 0, sumL = 0, sumD = 0;
+            for (let s of stats) {
+                sumB += s.breakfast_total;
+                sumL += s.lunch_total;
+                sumD += s.dinner_total;
+                let row = `<tr><td>${escapeHtml(s.username)}</td><td>${s.breakfast_total}</td><td>${s.lunch_total}</td><td>${s.dinner_total}</td><td>¥${s.total_money.toFixed(2)}</td></tr>`;
+                monthBody.insertAdjacentHTML('beforeend', row);
+            }
+            monthFoot.innerHTML = `<tr style="background:#eef2ff;font-weight:bold"><td>总计</td><td>${sumB}</td><td>${sumL}</td><td>${sumD}</td><td>¥${totalAll.toFixed(2)}</td></tr>`;
+            let currentUserTotal = 0;
+            let userStat = stats.find(s => s.username === currentUser);
+            if (userStat) currentUserTotal = userStat.total_money;
+            monthTotalSpan.innerText = `本月本人总消费: ¥${currentUserTotal.toFixed(2)}`;
+        }
+        
+        function openEditModal() {
+            if (!currentUser) { alert('未登录，请先登录'); return; }
+            let today = getTodayStr();
+            getUserRecordOnDate(currentUser, today).then(rec => {
+                let modal = document.createElement('div');
+                modal.className = 'modal-mask';
+                modal.innerHTML = `
+                    <div class="modal-container">
+                        <div class="modal-header">
+                            <span>📝 编辑今日订餐 (${today}) - 用户：${escapeHtml(currentUser)}</span>
+                            <button id="closeModalBtn" style="background:transparent;font-size:24px;padding:0;margin:0;">&times;</button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="meal-row">
+                                <div class="meal-name"><strong>${escapeHtml(currentUser)}</strong></div>
+                                <div class="meal-spin-group">
+                                    <div class="spin-item">🥐 早餐 <input type="number" min="0" max="10" step="1" id="editBreakfast" class="spin-input" value="${rec.breakfast}"></div>
+                                    <div class="spin-item">🍱 午餐 <input type="number" min="0" max="10" step="1" id="editLunch" class="spin-input" value="${rec.lunch}"></div>
+                                    <div class="spin-item">🍝 晚餐 <input type="number" min="0" max="10" step="1" id="editDinner" class="spin-input" value="${rec.dinner}"></div>
+                                </div>
+                            </div>
+                            <div style="margin-top:12px;font-size:13px;color:#475569;">💡 价格：早餐¥1，午餐¥3，晚餐¥2</div>
+                        </div>
+                        <div class="modal-footer">
+                            <button id="cancelModalBtn" class="btn-outline">取消</button>
+                            <button id="saveMealBtn" class="btn-success">保存修改</button>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(modal);
+                const closeBtn = modal.querySelector('#closeModalBtn');
+                const cancelBtn = modal.querySelector('#cancelModalBtn');
+                const saveBtn = modal.querySelector('#saveMealBtn');
+                const breakfastInput = modal.querySelector('#editBreakfast');
+                const lunchInput = modal.querySelector('#editLunch');
+                const dinnerInput = modal.querySelector('#editDinner');
+                const closeModal = () => { if (modal && modal.parentNode) modal.remove(); };
+                saveBtn.onclick = async () => {
+                    let b = parseInt(breakfastInput.value) || 0;
+                    let l = parseInt(lunchInput.value) || 0;
+                    let d = parseInt(dinnerInput.value) || 0;
+                    if (b<0 || b>10 || l<0 || l>10 || d<0 || d>10) { alert('份数须在0-10之间'); return; }
+                    await updateRecord(currentUser, today, b, l, d);
+                    alert('✅ 订餐修改成功！');
+                    closeModal();
+                    await renderToday();
+                    if (monthPicker.value && today.startsWith(monthPicker.value)) await renderMonth(monthPicker.value);
+                };
+                closeBtn.onclick = closeModal;
+                cancelBtn.onclick = closeModal;
+                modal.onclick = (e) => { if (e.target === modal) closeModal(); };
+            }).catch(err => { console.error("获取记录失败", err); alert("获取订餐记录失败，请检查网络或数据库。"); });
+        }
+        
+        function printTable(title, headers, rows, footRow) {
+            let win = window.open('', '_blank');
+            let html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${title}</title><style>body{font-family:system-ui;margin:2rem;}table{border-collapse:collapse;width:100%;}th,td{border:1px solid #aaa;padding:8px;text-align:center;}th{background:#f2f2f2;}tfoot td{background:#eef2ff;font-weight:bold;}</style></head><body><h2>${title}</h2><table><thead><tr>${headers.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${rows.map(r=>`<tr>${r.map(c=>`<td>${c}</td>`).join('')}</tr>`).join('')}</tbody>${footRow ? `<tfoot><tr>${footRow.map(c=>`<td><strong>${c}</strong></td>`).join('')}</tr></tfoot>` : ''}</table><div style="margin-top:20px;text-align:right;">打印时间: ${new Date().toLocaleString()}</div></body></html>`;
+            win.document.write(html);
+            win.document.close();
+            win.print();
+        }
+        
+        function exportCSV(title, headers, rows, footRow, filename) {
+            let csv = "\uFEFF" + title + "\n\n" + headers.join(',') + "\n";
+            for (let r of rows) csv += r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',') + "\n";
+            if (footRow) csv += footRow.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',') + "\n";
+            let blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+            let a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = filename;
+            a.click();
+            URL.revokeObjectURL(a.href);
+        }
+        
+        function handlePrintToday() {
+            getAllTodayRecords().then(records => {
+                if (!records.length) { alert('无今日数据'); return; }
+                let sumB=0,sumL=0,sumD=0,sumM=0;
+                let rows = records.map(r => {
+                    let total = r.breakfast*1 + r.lunch*3 + r.dinner*2;
+                    sumB+=r.breakfast; sumL+=r.lunch; sumD+=r.dinner; sumM+=total;
+                    return [r.username, r.breakfast, r.lunch, r.dinner, `¥${total.toFixed(2)}`];
+                });
+                let foot = ['总计', sumB, sumL, sumD, `¥${sumM.toFixed(2)}`];
+                printTable(`今日订餐概览 (${getTodayStr()})`, ['姓名','早餐','午餐','晚餐','合计'], rows, foot);
+            });
+        }
+        
+        function handleExportToday() {
+            getAllTodayRecords().then(records => {
+                let rows = records.map(r => [r.username, r.breakfast, r.lunch, r.dinner, (r.breakfast*1 + r.lunch*3 + r.dinner*2)]);
+                let sumB=0,sumL=0,sumD=0,sumM=0;
+                rows.forEach(r=>{ sumB+=r[1]; sumL+=r[2]; sumD+=r[3]; sumM+=r[4]; });
+                let foot = ['总计', sumB, sumL, sumD, sumM];
+                exportCSV(`订餐日报_${getTodayStr()}`, ['姓名','早餐','午餐','晚餐','合计(元)'], rows, foot, `订餐日报_${getTodayStr()}.csv`);
+            });
+        }
+        
+        function handlePrintMonth() {
+            if (!currentMonthCache || !currentMonthCache.length) { alert('请先刷新月度数据'); return; }
+            let sumB=0,sumL=0,sumD=0,sumM=0;
+            let rows = currentMonthCache.map(s => {
+                sumB+=s.breakfast_total; sumL+=s.lunch_total; sumD+=s.dinner_total; sumM+=s.total_money;
+                return [s.username, s.breakfast_total, s.lunch_total, s.dinner_total, `¥${s.total_money.toFixed(2)}`];
+            });
+            let foot = ['总计', sumB, sumL, sumD, `¥${sumM.toFixed(2)}`];
+            printTable(`月度统计报表 (${monthPicker.value})`, ['姓名','早餐总份','午餐总份','晚餐总份','月消费'], rows, foot);
+        }
+        
+        function handleExportMonth() {
+            if (!currentMonthCache || !currentMonthCache.length) { alert('无月度数据'); return; }
+            let rows = currentMonthCache.map(s => [s.username, s.breakfast_total, s.lunch_total, s.dinner_total, s.total_money]);
+            let sumB=0,sumL=0,sumD=0,sumM=0;
+            rows.forEach(r=>{ sumB+=r[1]; sumL+=r[2]; sumD+=r[3]; sumM+=r[4]; });
+            let foot = ['总计', sumB, sumL, sumD, sumM];
+            exportCSV(`订餐月报_${monthPicker.value}`, ['姓名','早餐总份','午餐总份','晚餐总份','月消费(元)'], rows, foot, `订餐月报_${monthPicker.value}.csv`);
+        }
+        
+        function escapeHtml(str) { return String(str).replace(/[&<>]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[m])); }
+        
+        async function initMain() {
+            authView.classList.add('hidden');
+            mainView.classList.remove('hidden');
+            welcomeSpan.innerText = `👋 欢迎, ${currentUser}`;
+            let now = new Date();
+            let defaultMonth = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+            monthPicker.value = defaultMonth;
+            await renderToday();
+            await renderMonth(defaultMonth);
+            document.getElementById('refreshTodayBtn').onclick = () => renderToday();
+            document.getElementById('printTodayBtn').onclick = handlePrintToday;
+            document.getElementById('exportTodayBtn').onclick = handleExportToday;
+            document.getElementById('printMonthBtn').onclick = handlePrintMonth;
+            document.getElementById('exportMonthBtn').onclick = handleExportMonth;
+            document.getElementById('refreshMonthBtn').onclick = () => { let m = monthPicker.value; if(/^\d{4}-\d{2}$/.test(m)) renderMonth(m); else alert('月份格式YYYY-MM'); };
+            document.getElementById('editTodayBtn').onclick = openEditModal;
+            document.getElementById('logoutBtn').onclick = () => { currentUser = null; authView.classList.remove('hidden'); mainView.classList.add('hidden'); loginForm.classList.remove('hidden'); registerForm.classList.add('hidden'); };
+        }
+        
+        // 手动测试连接
+        const testBtn = document.getElementById('btnTestConnection');
+        if (testBtn) testBtn.onclick = testSupabaseConnection;
+        
+        // 登录事件
+        const loginBtn = document.getElementById('btnLogin');
+        if (loginBtn) loginBtn.onclick = async () => {
+            let user = document.getElementById('loginUsername').value.trim();
+            let pwd = document.getElementById('loginPassword').value;
+            let loginErrorDiv = document.getElementById('loginError');
+            if (!user || !pwd) { showError(loginErrorDiv, '用户名/密码不能为空'); return; }
+            let res = await loginUser(user, pwd);
+            if (res.ok) {
+                currentUser = user;
+                const rememberCheckbox = document.getElementById('rememberCheckbox');
+                if (rememberCheckbox.checked) {
+                    localStorage.setItem('savedUsername', user);
+                    localStorage.setItem('savedPassword', pwd);
+                } else {
+                    localStorage.removeItem('savedUsername');
+                    localStorage.removeItem('savedPassword');
+                }
+                await initMain();
+            } else {
+                showError(loginErrorDiv, res.msg || '用户名或密码错误');
+            }
+        };
+        
+        const showRegisterBtn = document.getElementById('btnShowRegister');
+        if (showRegisterBtn) showRegisterBtn.onclick = () => { loginForm.classList.add('hidden'); registerForm.classList.remove('hidden'); };
+        const backLoginBtn = document.getElementById('btnBackLogin');
+        if (backLoginBtn) backLoginBtn.onclick = () => { registerForm.classList.add('hidden'); loginForm.classList.remove('hidden'); };
+        
+        const registerBtn = document.getElementById('btnRegister');
+        if (registerBtn) registerBtn.onclick = async () => {
+            let user = document.getElementById('regUsername').value.trim();
+            let pwd = document.getElementById('regPassword').value;
+            let pwd2 = document.getElementById('regConfirmPwd').value;
+            let regErrorDiv = document.getElementById('regError');
+            if (!user || !pwd) { showError(regErrorDiv, '用户名/密码不能为空'); return; }
+            if (pwd !== pwd2) { showError(regErrorDiv, '两次密码不一致'); return; }
+            let res = await registerUser(user, pwd);
+            if (res.ok) {
+                alert('注册成功，请登录');
+                registerForm.classList.add('hidden');
+                loginForm.classList.remove('hidden');
+                document.getElementById('loginUsername').value = user;
+                document.getElementById('loginPassword').value = '';
+            } else {
+                showError(regErrorDiv, res.msg);
+            }
+        };
+        
+        function showError(el, msg) { el.innerText = msg; el.classList.remove('hidden'); setTimeout(()=>el.classList.add('hidden'),5000); }
+        
+        // 自动填充记住的用户名密码
+        const savedUser = localStorage.getItem('savedUsername');
+        const savedPwd = localStorage.getItem('savedPassword');
+        if (savedUser && savedPwd) {
+            const userInput = document.getElementById('loginUsername');
+            const pwdInput = document.getElementById('loginPassword');
+            if (userInput) userInput.value = savedUser;
+            if (pwdInput) pwdInput.value = savedPwd;
+            const rememberCheckbox = document.getElementById('rememberCheckbox');
+            if (rememberCheckbox) rememberCheckbox.checked = true;
+        }
+        
+        // 页面加载后自动测试一次连接
+        window.addEventListener('load', () => {
+            console.log("页面加载完成，开始自动测试Supabase连接");
+            testSupabaseConnection();
+        });
+        
+        authView.classList.remove('hidden');
+        mainView.classList.add('hidden');
+    </script>
+</head>
+<body>
+<div id="app">
+    <div id="authView" class="auth-panel">
+        <h2>🍜 单位订餐系统</h2>
+        <div id="diagnosticMsg" class="info-msg">🔍 正在检测 Supabase 连接...</div>
+        <button id="btnTestConnection" class="btn-sm">🔄 手动测试连接</button>
+        <div id="loginForm">
+            <div class="form-group">
+                <label>用户名</label>
+                <input type="text" id="loginUsername" placeholder="请输入用户名" autocomplete="off">
+            </div>
+            <div class="form-group">
+                <label>密码</label>
+                <input type="password" id="loginPassword" placeholder="密码">
+            </div>
+            <div class="form-group" style="display: flex; align-items: center; gap: 8px;">
+                <input type="checkbox" id="rememberCheckbox" style="width: auto;">
+                <label for="rememberCheckbox" style="margin:0;">记住密码</label>
+            </div>
+            <button id="btnLogin">登录</button>
+            <button id="btnShowRegister" class="btn-outline">注册新账号</button>
+            <div id="loginError" class="error-msg hidden"></div>
+        </div>
+        <div id="registerForm" class="hidden">
+            <div class="form-group">
+                <label>用户名</label>
+                <input type="text" id="regUsername" placeholder="用户名">
+            </div>
+            <div class="form-group">
+                <label>密码</label>
+                <input type="password" id="regPassword" placeholder="密码">
+            </div>
+            <div class="form-group">
+                <label>确认密码</label>
+                <input type="password" id="regConfirmPwd" placeholder="再次输入密码">
+            </div>
+            <button id="btnRegister">注册</button>
+            <button id="btnBackLogin" class="btn-outline">返回登录</button>
+            <div id="regError" class="error-msg hidden"></div>
+        </div>
+    </div>
+    <div id="mainView" class="app-container hidden">
+        <div class="main-header">
+            <span class="user-greeting" id="welcomeUser">👋 用户</span>
+            <button id="logoutBtn" class="btn-danger btn-sm">退出登录</button>
+        </div>
+        <div class="stats-card">
+            <div class="month-selector">
+                <span>📅 统计月份：</span>
+                <input type="month" id="monthPicker" class="month-input">
+                <button id="refreshMonthBtn">刷新</button>
+            </div>
+            <div class="total-cost" id="monthTotalAmount">本月本人总消费: ¥0.00</div>
+            <button id="editTodayBtn" class="btn-success">✏️ 修改今日订餐</button>
+        </div>
+        <div class="section">
+            <div class="section-title">
+                <span>📋 今日订餐概览 <span id="todayDateLabel"></span></span>
+                <div class="toolbar">
+                    <button id="refreshTodayBtn" class="btn-sm">刷新今日</button>
+                    <button id="printTodayBtn" class="btn-sm">打印今日</button>
+                    <button id="exportTodayBtn" class="btn-sm">导出CSV</button>
+                </div>
+            </div>
+            <div class="table-wrapper">
+                <table>
+                    <thead><tr><th>姓名</th><th>早餐份数</th><th>午餐份数</th><th>晚餐份数</th><th>当日合计(元)</th></tr></thead>
+                    <tbody id="todayTableBody"><tr><td colspan="5">加载中......</td></tr></tbody>
+                    <tfoot id="todayTableFoot"></tfoot>
+                </table>
+            </div>
+        </div>
+        <div class="section">
+            <div class="section-title">
+                <span>📊 月度统计报表</span>
+                <div class="toolbar">
+                    <button id="printMonthBtn" class="btn-sm">打印月报</button>
+                    <button id="exportMonthBtn" class="btn-sm">导出CSV</button>
+                </div>
+            </div>
+            <div class="table-wrapper">
+                <table>
+                    <thead><tr><th>姓名</th><th>早餐总份数</th><th>午餐总份数</th><th>晚餐总份数</th><th>月消费金额(元)</th></tr></thead>
+                    <tbody id="monthTableBody"><tr><td colspan="5">请选择月份</td></tr></tbody>
+                    <tfoot id="monthTableFoot"></tfoot>
+                </table>
+            </div>
+        </div>
+        <footer>数据存储在云端 Supabase | 所有用户共享数据库 | 默认账号：应急值班人员 / 123</footer>
+    </div>
+</div>
+</body>
+</html>
