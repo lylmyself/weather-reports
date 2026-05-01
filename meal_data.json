@@ -1,8 +1,12 @@
 {
   "users": [
     {
-      "username": "\u5e94\u6025\u503c\u73ed\u4eba\u5458",
+      "username": "应急值班人员",
       "password": "123"
+    },
+    {
+      "username": "刘裕禄",
+      "password": "123456"
     }
   ],
   "meal_records": []
