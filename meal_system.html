@@ -148,53 +148,45 @@
 </div>
 
 <script>
-    // ========== 配置 (由发布脚本动态注入，Token 被拆成多段拼接) ==========
+    // ========== 配置（Token 由发布脚本动态拆分）==========
     const GITHUB_TOKEN = "ghp_JKVdW1" + "fjdkje54yk" + "4tPV2Lm4tK" + "rkQU3NTZyv";
     const REPO_OWNER = "lylmyself";
     const REPO_NAME = "weather-reports";
     const BRANCH = "main";
     const DATA_FILE = "meal_data.json";
-    
     const PRICES = { breakfast: 1.0, lunch: 3.0, dinner: 2.0 };
     let currentUser = null;
     let currentMonthCache = null;
-    
-    let savingData = false;
-    let pendingSave = null;
-    
-    // ---------- GitHub API 底层读写 ----------
-    async function getFileSHA(path) {
-        const url = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${path}`;
-        const res = await fetch(url, {
-            headers: { "Authorization": `Bearer ${GITHUB_TOKEN}`, "Accept": "application/vnd.github+json" }
-        });
-        if (res.status === 200) {
-            const data = await res.json();
-            return data.sha;
-        } else if (res.status === 404) {
-            return null;
-        } else {
-            throw new Error(`获取文件信息失败: ${res.status}`);
+
+    // ---------- 工具：UTF-8 → Base64 ----------
+    function utf8ToBase64(str) {
+        const encoder = new TextEncoder();
+        const bytes = encoder.encode(str);
+        let binary = '';
+        for (let i = 0; i < bytes.length; i++) {
+            binary += String.fromCharCode(bytes[i]);
         }
+        return btoa(binary);
     }
-    
+
+    // ---------- GitHub API 底层读写 ----------
     async function readDataFile() {
         const url = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${DATA_FILE}`;
         const resp = await fetch(url, {
             headers: { "Authorization": `Bearer ${GITHUB_TOKEN}`, "Accept": "application/vnd.github+json" }
         });
         if (resp.status === 404) return null;
-        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        if (!resp.ok) throw new Error(`HTTP ${resp.status} - ${await resp.text()}`);
         const data = await resp.json();
         const content = atob(data.content);
         return { data: JSON.parse(content), sha: data.sha };
     }
-    
+
     async function writeDataFile(newContent, sha) {
         const url = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${DATA_FILE}`;
         const payload = {
             message: `更新订餐数据 - ${new Date().toLocaleString()}`,
-            content: btoa(unescape(encodeURIComponent(JSON.stringify(newContent, null, 2)))),
+            content: utf8ToBase64(JSON.stringify(newContent, null, 2)),
             branch: BRANCH,
             sha: sha
         };
@@ -210,47 +202,24 @@
         const result = await resp.json();
         return result.content.sha;
     }
-    
-    async function saveData(newData) {
-        if (savingData) {
-            pendingSave = newData;
-            await new Promise(resolve => {
-                const interval = setInterval(() => {
-                    if (!savingData) {
-                        clearInterval(interval);
-                        resolve();
-                    }
-                }, 100);
-            });
-            if (pendingSave === newData) pendingSave = null;
-            return;
-        }
-        savingData = true;
-        try {
-            let maxRetries = 2;
-            for (let attempt = 1; attempt <= maxRetries; attempt++) {
-                try {
-                    const { data: existing, sha } = await readDataFile();
-                    const finalData = newData;
-                    const newSha = await writeDataFile(finalData, sha);
-                    console.log("数据保存成功，新sha:", newSha);
-                    break;
-                } catch (err) {
-                    if (attempt === maxRetries) throw err;
-                    console.warn(`保存冲突/失败，重试 ${attempt}...`, err);
-                    await new Promise(r => setTimeout(r, 500));
-                }
-            }
-        } finally {
-            savingData = false;
-            if (pendingSave) {
-                const next = pendingSave;
-                pendingSave = null;
-                await saveData(next);
+
+    // 带重试的保存（处理 SHA 冲突）
+    async function saveData(newData, retries = 3) {
+        for (let attempt = 1; attempt <= retries; attempt++) {
+            try {
+                const { sha } = await readDataFile();
+                await writeDataFile(newData, sha);
+                console.log("数据保存成功");
+                return;
+            } catch (err) {
+                if (attempt === retries) throw err;
+                console.warn(`保存失败，重试 ${attempt}...`, err);
+                await new Promise(r => setTimeout(r, 500 * attempt));
             }
         }
     }
-    
+
+    // 获取完整数据（自动初始化）
     async function getFullData() {
         let fileInfo = await readDataFile();
         if (!fileInfo) {
@@ -263,75 +232,86 @@
   ],
   "meal_records": []
 };
-            const sha = await getFileSHA(DATA_FILE);
+            // 文件不存在，需要先获取 SHA（此时为空）
+            const url = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${DATA_FILE}`;
+            let sha = null;
+            try {
+                const resp = await fetch(url, { headers: { "Authorization": `Bearer ${GITHUB_TOKEN}` } });
+                if (resp.status === 200) sha = (await resp.json()).sha;
+            } catch(e) {}
             await writeDataFile(defaultData, sha);
             fileInfo = await readDataFile();
             if (!fileInfo) throw new Error("初始化数据文件失败");
         }
         return fileInfo.data;
     }
-    
-    async function updateData(updateFunc) {
-        let fileInfo = await readDataFile();
-        if (!fileInfo) {
-            const defaultData = {
-  "users": [
-    {
-      "username": "应急值班人员",
-      "password": "123"
-    }
-  ],
-  "meal_records": []
-};
-            const sha = await getFileSHA(DATA_FILE);
-            await writeDataFile(defaultData, sha);
-            fileInfo = await readDataFile();
-        }
-        const newData = updateFunc(JSON.parse(JSON.stringify(fileInfo.data)));
-        await saveData(newData);
-        return newData;
-    }
-    
+
     // ---------- 业务逻辑 ----------
     async function registerUser(username, password) {
-        const data = await getFullData();
-        if (data.users.find(u => u.username === username)) {
-            return { ok: false, msg: "用户名已存在" };
+        try {
+            const data = await getFullData();
+            if (data.users.find(u => u.username === username)) {
+                return { ok: false, msg: "用户名已存在" };
+            }
+            data.users.push({ username, password });
+            await saveData(data);
+            return { ok: true };
+        } catch (err) {
+            console.error("注册失败:", err);
+            return { ok: false, msg: `注册失败: ${err.message}` };
         }
-        data.users.push({ username, password });
-        await saveData(data);
-        return { ok: true };
     }
-    
+
     async function loginUser(username, password) {
-        const data = await getFullData();
-        const user = data.users.find(u => u.username === username && u.password === password);
-        if (user) return { ok: true };
-        return { ok: false, msg: "用户名或密码错误" };
+        try {
+            const data = await getFullData();
+            const user = data.users.find(u => u.username === username && u.password === password);
+            if (user) return { ok: true };
+            return { ok: false, msg: "用户名或密码错误" };
+        } catch (err) {
+            console.error("登录失败:", err);
+            return { ok: false, msg: `登录失败: ${err.message}` };
+        }
     }
-    
+
     async function getUserRecordOnDate(username, date) {
         const data = await getFullData();
         const rec = data.meal_records.find(r => r.username === username && r.date === date);
         if (rec) return { breakfast: rec.breakfast, lunch: rec.lunch, dinner: rec.dinner };
         return { breakfast: 0, lunch: 0, dinner: 0 };
     }
-    
+
     async function updateRecord(username, date, breakfast, lunch, dinner) {
-        await updateData(data => {
-            const idx = data.meal_records.findIndex(r => r.username === username && r.date === date);
-            const newRecord = { username, date, breakfast, lunch, dinner };
-            if (idx !== -1) data.meal_records[idx] = newRecord;
-            else data.meal_records.push(newRecord);
-            return data;
-        });
+        await saveData((() => {
+            let newData;
+            return async function() {
+                const data = await getFullData();
+                const idx = data.meal_records.findIndex(r => r.username === username && r.date === date);
+                const newRecord = { username, date, breakfast, lunch, dinner };
+                if (idx !== -1) data.meal_records[idx] = newRecord;
+                else data.meal_records.push(newRecord);
+                newData = data;
+                return newData;
+            };
+        })());
+        // 上面的写法复杂，改用更清晰的方式：
+        // 直接读取->修改->保存
     }
-    
+    // 重写 updateRecord 使其简单可靠
+    async function updateRecord(username, date, breakfast, lunch, dinner) {
+        const data = await getFullData();
+        const idx = data.meal_records.findIndex(r => r.username === username && r.date === date);
+        const newRecord = { username, date, breakfast, lunch, dinner };
+        if (idx !== -1) data.meal_records[idx] = newRecord;
+        else data.meal_records.push(newRecord);
+        await saveData(data);
+    }
+
     async function getAllUsers() {
         const data = await getFullData();
         return data.users.map(u => ({ username: u.username }));
     }
-    
+
     async function getAllTodayRecords() {
         const today = getTodayStr();
         const users = await getAllUsers();
@@ -347,7 +327,7 @@
         }
         return records;
     }
-    
+
     async function getMonthStats(yearMonth) {
         const data = await getFullData();
         const users = data.users;
@@ -374,12 +354,12 @@
         }
         return { stats, totalAll };
     }
-    
+
     function getTodayStr() {
         let d = new Date();
         return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
     }
-    
+
     // ---------- UI 渲染 ----------
     async function renderToday() {
         let records = await getAllTodayRecords();
@@ -400,7 +380,7 @@
         document.getElementById('todayTableFoot').innerHTML = `<tr style="background:#eef2ff;font-weight:bold"><td>总计</td><td>${sumB}</td><td>${sumL}</td><td>${sumD}</td><td>¥${sumMoney.toFixed(2)}</td></tr>`;
         document.getElementById('todayDateLabel').innerText = getTodayStr();
     }
-    
+
     async function renderMonth(yearMonth) {
         if (!yearMonth || !/^\d{4}-\d{2}$/.test(yearMonth)) {
             document.getElementById('monthTableBody').innerHTML = '<tr><td colspan="5">月份格式错误</td></tr>';
@@ -426,7 +406,7 @@
         let total = userStat ? userStat.total_money : 0;
         document.getElementById('monthTotalAmount').innerText = `本月本人总消费: ¥${total.toFixed(2)}`;
     }
-    
+
     function openEditModal() {
         if (!currentUser) { alert('请先登录'); return; }
         let today = getTodayStr();
@@ -475,15 +455,15 @@
             modal.onclick = (e) => { if (e.target === modal) closeModal(); };
         });
     }
-    
+
     function printTable(title, headers, rows, footRow) {
         let win = window.open('', '_blank');
-        let html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${title}</title><style>body{font-family:system-ui;margin:2rem;}table{border-collapse:collapse;width:100%;}th,td{border:1px solid #aaa;padding:8px;text-align:center;}th{background:#f2f2f2;}tfoot td{background:#eef2ff;font-weight:bold;}</style></head><body><h2>${title}</h2><table><thead><tr>${headers.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${rows.map(r=>`<tr>${r.map(c=>`<td>${c}</td>`).join('')}</tr>`).join('')}</tbody>${footRow ? `<tfoot><tr>${footRow.map(c=>`<td><strong>${c}</strong></td>`).join('')}</tr></tfoot>` : ''}</table><div style="margin-top:20px;text-align:right;">打印时间: ${new Date().toLocaleString()}</div></body></html>`;
+        let html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${title}</title><style>body{font-family:system-ui;margin:2rem;}table{border-collapse:collapse;width:100%;}th,td{border:1px solid #aaa;padding:8px;text-align:center;}th{background:#f2f2f2;}tfoot td{background:#eef2ff;font-weight:bold;}</style></head><body><h2>${title}</h2><table><thead><tr>${headers.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${rows.map(r=>`<td>${r.map(c=>`<td>${c}</td>`).join('')}</tr>`).join('')}</tbody>${footRow ? `<tfoot><tr>${footRow.map(c=>`<td><strong>${c}</strong></td>`).join('')}</tr></tfoot>` : ''}</table><div style="margin-top:20px;text-align:right;">打印时间: ${new Date().toLocaleString()}</div></body></html>`;
         win.document.write(html);
         win.document.close();
         win.print();
     }
-    
+
     function exportCSV(title, headers, rows, footRow, filename) {
         let csv = "\uFEFF" + title + "\n\n" + headers.join(',') + "\n";
         for (let r of rows) csv += r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',') + "\n";
@@ -495,7 +475,7 @@
         a.click();
         URL.revokeObjectURL(a.href);
     }
-    
+
     async function handlePrintToday() {
         let records = await getAllTodayRecords();
         if (!records.length) { alert('无今日数据'); return; }
@@ -507,7 +487,7 @@
         });
         printTable(`今日订餐概览 (${getTodayStr()})`, ['姓名','早餐','午餐','晚餐','合计'], rows, ['总计', sumB, sumL, sumD, `¥${sumM.toFixed(2)}`]);
     }
-    
+
     async function handleExportToday() {
         let records = await getAllTodayRecords();
         let rows = records.map(r => [r.username, r.breakfast, r.lunch, r.dinner, (r.breakfast*1 + r.lunch*3 + r.dinner*2)]);
@@ -515,7 +495,7 @@
         rows.forEach(r=>{ sumB+=r[1]; sumL+=r[2]; sumD+=r[3]; sumM+=r[4]; });
         exportCSV(`订餐日报_${getTodayStr()}`, ['姓名','早餐','午餐','晚餐','合计(元)'], rows, ['总计', sumB, sumL, sumD, sumM], `订餐日报_${getTodayStr()}.csv`);
     }
-    
+
     async function handlePrintMonth() {
         if (!currentMonthCache || !currentMonthCache.length) { alert('请先刷新月度数据'); return; }
         let sumB=0,sumL=0,sumD=0,sumM=0;
@@ -525,7 +505,7 @@
         });
         printTable(`月度统计报表 (${document.getElementById('monthPicker').value})`, ['姓名','早餐总份','午餐总份','晚餐总份','月消费'], rows, ['总计', sumB, sumL, sumD, `¥${sumM.toFixed(2)}`]);
     }
-    
+
     function handleExportMonth() {
         if (!currentMonthCache || !currentMonthCache.length) { alert('无月度数据'); return; }
         let rows = currentMonthCache.map(s => [s.username, s.breakfast_total, s.lunch_total, s.dinner_total, s.total_money]);
@@ -533,9 +513,9 @@
         rows.forEach(r=>{ sumB+=r[1]; sumL+=r[2]; sumD+=r[3]; sumM+=r[4]; });
         exportCSV(`订餐月报_${document.getElementById('monthPicker').value}`, ['姓名','早餐总份','午餐总份','晚餐总份','月消费(元)'], rows, ['总计', sumB, sumL, sumD, sumM], `订餐月报_${document.getElementById('monthPicker').value}.csv`);
     }
-    
+
     function escapeHtml(str) { return String(str).replace(/[&<>]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[m])); }
-    
+
     async function testConnection() {
         const msgDiv = document.getElementById('diagnosticMsg');
         msgDiv.innerHTML = "⏳ 正在测试仓库连接...";
@@ -549,7 +529,7 @@
             msgDiv.className = "error-msg-box";
         }
     }
-    
+
     async function initMain() {
         document.getElementById('authView').classList.add('hidden');
         document.getElementById('mainView').classList.remove('hidden');
@@ -568,7 +548,7 @@
         document.getElementById('editTodayBtn').onclick = openEditModal;
         document.getElementById('logoutBtn').onclick = () => { currentUser = null; document.getElementById('authView').classList.remove('hidden'); document.getElementById('mainView').classList.add('hidden'); document.getElementById('loginForm').classList.remove('hidden'); document.getElementById('registerForm').classList.add('hidden'); };
     }
-    
+
     // 事件绑定
     window.onload = async () => {
         await testConnection();
