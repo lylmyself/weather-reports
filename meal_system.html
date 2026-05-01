@@ -99,7 +99,7 @@
         </div>
         <div class="section">
             <div class="section-title">📊 月度统计<div><button id="printMonthBtn">打印月报</button><button id="exportMonthBtn">导出CSV</button></div></div>
-            <div class="table-wrapper"><table><thead>运转<th>姓名</th><th>早餐总份</th><th>午餐总份</th><th>晚餐总份</th><th>月消费(元)</th></tr></thead><tbody id="monthTableBody"><tr><td colspan="5">请选择月份</td></tr></tbody><tfoot id="monthTableFoot"></tfoot></div>
+            <div class="table-wrapper"><table><thead>运转<th>姓名</th><th>早餐总份</th><th>午餐总份</th><th>晚餐总份</th><th>月消费(元)</th></tr></thead><tbody id="monthTableBody"></table><td colspan="5">请选择月份</td></tr></tbody><tfoot id="monthTableFoot"></tfoot></div>
         </div>
         <footer>⚡ 数据存储于您的 GitHub 仓库，所有用户共享。默认账号：应急值班人员 / 123</footer>
     </div>
@@ -291,7 +291,7 @@
 
     async function renderMonth(yearMonth) {
         if (!yearMonth || !/^\d{4}-\d{2}$/.test(yearMonth)) {
-            document.getElementById('monthTableBody').innerHTML = '<tr><td colspan="5">月份格式错误</td></tr>';
+            document.getElementById('monthTableBody').innerHTML = '</td><td colspan="5">月份格式错误</td></tr>';
             return;
         }
         let { stats, totalAll } = await getMonthStats(yearMonth);
@@ -408,11 +408,9 @@
             await getFullData();
             msgDiv.innerHTML = "✅ GitHub 仓库连接正常，数据文件可用。";
             msgDiv.className = "info-msg";
-            return true;
         } catch(e) {
             msgDiv.innerHTML = `❌ 连接失败: ${e.message}。请检查 Token 或仓库设置。`;
             msgDiv.className = "error-msg-box";
-            return false;
         }
     }
 
@@ -522,29 +520,18 @@
     }
 
     window.onload = async () => {
-        // 检查是否有存储的 token
-        if (loadTokenFromStorage()) {
-            // 有存储，尝试连接
+        if (!loadTokenFromStorage()) {
+            showTokenPanel();
+        } else {
             hideTokenPanel();
             document.getElementById('authView').classList.remove('hidden');
-            const connected = await testConnection();
-            if (!connected) {
-                // 连接失败，说明 token 无效或仓库信息错误，清除存储并显示 token 设置面板
-                console.warn("连接失败，清除无效 token 并显示设置面板");
-                clearToken();
-                showTokenPanel();
-            }
-        } else {
-            // 无存储，直接显示 token 设置面板
-            showTokenPanel();
+            await testConnection();
         }
 
-        // 绑定按钮事件
         document.getElementById('btnSaveToken').onclick = onSaveToken;
         document.getElementById('btnResetToken').onclick = onResetToken;
-        document.getElementById('btnTestConnection').onclick = async () => { await testConnection(); };
+        document.getElementById('btnTestConnection').onclick = testConnection;
 
-        // 登录/注册事件
         document.getElementById('btnLogin').onclick = async () => {
             let user = document.getElementById('loginUsername').value.trim();
             let pwd = document.getElementById('loginPassword').value;
