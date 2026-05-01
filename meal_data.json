@@ -1,16 +1,20 @@
 {
   "users": [
     {
-      "username": "åºæ¥å¼ç­äººå",
+      "username": "Ã¥ÂºÂÃ¦ÂÂ¥Ã¥ÂÂ¼Ã§ÂÂ­Ã¤ÂºÂºÃ¥ÂÂ",
       "password": "123"
     },
     {
-      "username": "åè£ç¦",
+      "username": "Ã¥ÂÂÃ¨Â£ÂÃ§Â¦Â",
       "password": "123456"
     },
     {
-      "username": "岳如画",
+      "username": "å²³å¦ç»",
       "password": "hssqxt123"
+    },
+    {
+      "username": "刘裕禄",
+      "password": "123456"
     }
   ],
   "meal_records": []
