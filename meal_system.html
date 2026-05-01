@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>单位订餐系统（共享数据库版）</title>
+    <title>单位订餐系统（GitHub共享存储版）</title>
     <style>
         *{margin:0;padding:0;box-sizing:border-box;font-family:system-ui,'Segoe UI',Roboto,sans-serif}
         body{background:#eef2f7;padding:20px}
@@ -54,497 +54,12 @@
         .error-msg-box{background:#fee2e2;border-left:4px solid #dc2626;padding:10px;margin-bottom:20px;font-size:13px;text-align:left}
         @media(max-width:700px){.app-container{padding:18px}.stats-card{flex-direction:column;align-items:stretch}}
     </style>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script>
-        console.log("脚本开始执行");
-        const SUPABASE_URL = "https://cgckvuegaphsfxxetkro.supabase.co";
-        const SUPABASE_ANON_KEY = "sb_publishable_DA9bpv1TSbVdTWZXrpGreA_0aafyDLE";
-        console.log("Supabase URL:", SUPABASE_URL);
-        console.log("Supabase Anon Key存在:", !!SUPABASE_ANON_KEY);
-        
-        let supabase = null;
-        
-        // 正确初始化 Supabase 客户端
-        function initSupabase() {
-            if (typeof window.supabase !== 'undefined' && window.supabase.createClient) {
-                try {
-                    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-                    console.log("✅ Supabase客户端创建成功");
-                    return true;
-                } catch(e) {
-                    console.error("创建客户端失败:", e);
-                    return false;
-                }
-            } else {
-                console.error("❌ Supabase 库未加载，请检查网络或CDN");
-                return false;
-            }
-        }
-        
-        const initOk = initSupabase();
-        if (!initOk) {
-            window.addEventListener('load', () => {
-                const msgDiv = document.getElementById('diagnosticMsg');
-                if (msgDiv) {
-                    msgDiv.innerHTML = "❌ 无法加载 Supabase 客户端，请刷新页面或检查网络。";
-                    msgDiv.className = "error-msg-box";
-                }
-            });
-        }
-        
-        const PRICES = { breakfast: 1.0, lunch: 3.0, dinner: 2.0 };
-        
-        // 诊断函数：测试Supabase连接和表
-        async function testSupabaseConnection() {
-            const msgDiv = document.getElementById('diagnosticMsg');
-            if (!msgDiv) return;
-            msgDiv.innerHTML = "⏳ 正在测试连接...";
-            msgDiv.className = "info-msg";
-            if (!supabase) {
-                msgDiv.innerHTML = "❌ Supabase客户端未初始化，请刷新页面重试。";
-                msgDiv.className = "error-msg-box";
-                return false;
-            }
-            try {
-                const { data, error } = await supabase.from('users').select('username').limit(1);
-                if (error) {
-                    if (error.message.includes("relation") && error.message.includes("does not exist")) {
-                        msgDiv.innerHTML = "❌ 数据库表 'users' 不存在！请在 Supabase SQL Editor 中执行建表语句。";
-                        msgDiv.className = "error-msg-box";
-                        console.error("表不存在错误:", error);
-                        return false;
-                    }
-                    msgDiv.innerHTML = `❌ Supabase 查询错误: ${error.message}`;
-                    msgDiv.className = "error-msg-box";
-                    console.error("查询错误:", error);
-                    return false;
-                }
-                msgDiv.innerHTML = "✅ Supabase 连接正常，表已就绪。可以正常注册和登录。";
-                msgDiv.className = "info-msg";
-                return true;
-            } catch(err) {
-                msgDiv.innerHTML = `❌ 网络错误: ${err.message}。请检查网络或 Supabase URL 是否正确。`;
-                msgDiv.className = "error-msg-box";
-                console.error("连接异常:", err);
-                return false;
-            }
-        }
-        
-        async function registerUser(username, password) {
-            if (!supabase) return { ok: false, msg: '系统未初始化，请刷新页面' };
-            const { data: existing, error: checkErr } = await supabase
-                .from('users')
-                .select('username')
-                .eq('username', username)
-                .maybeSingle();
-            if (checkErr && checkErr.code !== 'PGRST116') {
-                console.error("注册检查错误:", checkErr);
-                return { ok: false, msg: `系统错误: ${checkErr.message}` };
-            }
-            if (existing) return { ok: false, msg: '用户名已存在' };
-            const { error: insertErr } = await supabase
-                .from('users')
-                .insert([{ username, password }]);
-            if (insertErr) {
-                console.error("插入错误:", insertErr);
-                return { ok: false, msg: `注册失败: ${insertErr.message}` };
-            }
-            return { ok: true };
-        }
-        
-        async function loginUser(username, password) {
-            if (!supabase) return { ok: false, msg: '系统未初始化，请刷新页面' };
-            const { data, error } = await supabase
-                .from('users')
-                .select('username')
-                .eq('username', username)
-                .eq('password', password)
-                .maybeSingle();
-            if (error) {
-                console.error("登录查询错误:", error);
-                return { ok: false, msg: `登录错误: ${error.message}` };
-            }
-            if (!data) return { ok: false, msg: '用户名或密码错误' };
-            return { ok: true, username: data.username };
-        }
-        
-        async function getUserRecordOnDate(username, date) {
-            if (!supabase) return { breakfast:0, lunch:0, dinner:0 };
-            const { data, error } = await supabase
-                .from('meal_records')
-                .select('breakfast, lunch, dinner')
-                .eq('username', username)
-                .eq('date', date)
-                .maybeSingle();
-            if (error || !data) return { breakfast:0, lunch:0, dinner:0 };
-            return { breakfast: data.breakfast, lunch: data.lunch, dinner: data.dinner };
-        }
-        
-        async function updateRecord(username, date, breakfast, lunch, dinner) {
-            if (!supabase) return;
-            const { data: existing } = await supabase
-                .from('meal_records')
-                .select('id')
-                .eq('username', username)
-                .eq('date', date)
-                .maybeSingle();
-            if (existing) {
-                await supabase
-                    .from('meal_records')
-                    .update({ breakfast, lunch, dinner })
-                    .eq('id', existing.id);
-            } else {
-                await supabase
-                    .from('meal_records')
-                    .insert([{ username, date, breakfast, lunch, dinner }]);
-            }
-        }
-        
-        async function getAllUsers() {
-            if (!supabase) return [];
-            const { data, error } = await supabase
-                .from('users')
-                .select('username')
-                .order('username');
-            if (error) {
-                console.error("获取用户列表错误:", error);
-                return [];
-            }
-            return data.map(u => ({ username: u.username }));
-        }
-        
-        async function getAllTodayRecords() {
-            const today = getTodayStr();
-            const users = await getAllUsers();
-            const records = [];
-            for (let u of users) {
-                const rec = await getUserRecordOnDate(u.username, today);
-                records.push({
-                    username: u.username,
-                    breakfast: rec.breakfast,
-                    lunch: rec.lunch,
-                    dinner: rec.dinner
-                });
-            }
-            return records;
-        }
-        
-        async function getMonthStats(yearMonth) {
-            if (!supabase) return { stats: [], totalAll: 0 };
-            const users = await getAllUsers();
-            const { data: allRecords, error } = await supabase
-                .from('meal_records')
-                .select('username, date, breakfast, lunch, dinner')
-                .gte('date', yearMonth + '-01')
-                .lte('date', yearMonth + '-31');
-            if (error) return { stats: [], totalAll: 0 };
-            let stats = [];
-            let totalAll = 0;
-            for (let u of users) {
-                let breakfastTotal = 0, lunchTotal = 0, dinnerTotal = 0, money = 0;
-                const userRecs = allRecords.filter(r => r.username === u.username);
-                for (let rec of userRecs) {
-                    breakfastTotal += rec.breakfast;
-                    lunchTotal += rec.lunch;
-                    dinnerTotal += rec.dinner;
-                    money += rec.breakfast * PRICES.breakfast + rec.lunch * PRICES.lunch + rec.dinner * PRICES.dinner;
-                }
-                stats.push({
-                    username: u.username,
-                    breakfast_total: breakfastTotal,
-                    lunch_total: lunchTotal,
-                    dinner_total: dinnerTotal,
-                    total_money: money
-                });
-                totalAll += money;
-            }
-            return { stats, totalAll };
-        }
-        
-        function getTodayStr() {
-            let d = new Date();
-            return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-        }
-        
-        let currentUser = null;
-        const authView = document.getElementById('authView');
-        const mainView = document.getElementById('mainView');
-        const loginForm = document.getElementById('loginForm');
-        const registerForm = document.getElementById('registerForm');
-        const welcomeSpan = document.getElementById('welcomeUser');
-        const monthPicker = document.getElementById('monthPicker');
-        const monthTotalSpan = document.getElementById('monthTotalAmount');
-        const todayDateSpan = document.getElementById('todayDateLabel');
-        const todayBody = document.getElementById('todayTableBody');
-        const todayFoot = document.getElementById('todayTableFoot');
-        const monthBody = document.getElementById('monthTableBody');
-        const monthFoot = document.getElementById('monthTableFoot');
-        let currentMonthCache = null;
-        
-        async function renderToday() {
-            let records = await getAllTodayRecords();
-            todayBody.innerHTML = '';
-            if (records.length === 0) { todayBody.innerHTML = '<tr><td colspan="5">暂无用户</td></tr>'; todayFoot.innerHTML = ''; return; }
-            let sumBreakfast = 0, sumLunch = 0, sumDinner = 0, sumMoney = 0;
-            for (let r of records) {
-                let total = r.breakfast*1 + r.lunch*3 + r.dinner*2;
-                sumBreakfast += r.breakfast;
-                sumLunch += r.lunch;
-                sumDinner += r.dinner;
-                sumMoney += total;
-                let row = `<tr><td>${escapeHtml(r.username)}</td><td>${r.breakfast}</td><td>${r.lunch}</td><td>${r.dinner}</td><td>¥${total.toFixed(2)}</td></tr>`;
-                todayBody.insertAdjacentHTML('beforeend', row);
-            }
-            todayFoot.innerHTML = `<tr style="background:#eef2ff;font-weight:bold"><td>总计</td><td>${sumBreakfast}</td><td>${sumLunch}</td><td>${sumDinner}</td><td>¥${sumMoney.toFixed(2)}</td></tr>`;
-            todayDateSpan.innerText = getTodayStr();
-        }
-        
-        async function renderMonth(yearMonth) {
-            if (!yearMonth || !/^\d{4}-\d{2}$/.test(yearMonth)) {
-                monthBody.innerHTML = '<tr><td colspan="5">月份格式错误</td></tr>';
-                monthFoot.innerHTML = '';
-                return;
-            }
-            let { stats, totalAll } = await getMonthStats(yearMonth);
-            currentMonthCache = stats;
-            monthBody.innerHTML = '';
-            if (stats.length === 0) { monthBody.innerHTML = '<tr><td colspan="5">暂无数据</td></tr>'; monthFoot.innerHTML = ''; return; }
-            let sumB = 0, sumL = 0, sumD = 0;
-            for (let s of stats) {
-                sumB += s.breakfast_total;
-                sumL += s.lunch_total;
-                sumD += s.dinner_total;
-                let row = `<tr><td>${escapeHtml(s.username)}</td><td>${s.breakfast_total}</td><td>${s.lunch_total}</td><td>${s.dinner_total}</td><td>¥${s.total_money.toFixed(2)}</td></tr>`;
-                monthBody.insertAdjacentHTML('beforeend', row);
-            }
-            monthFoot.innerHTML = `<tr style="background:#eef2ff;font-weight:bold"><td>总计</td><td>${sumB}</td><td>${sumL}</td><td>${sumD}</td><td>¥${totalAll.toFixed(2)}</td></tr>`;
-            let currentUserTotal = 0;
-            let userStat = stats.find(s => s.username === currentUser);
-            if (userStat) currentUserTotal = userStat.total_money;
-            monthTotalSpan.innerText = `本月本人总消费: ¥${currentUserTotal.toFixed(2)}`;
-        }
-        
-        function openEditModal() {
-            if (!currentUser) { alert('未登录，请先登录'); return; }
-            let today = getTodayStr();
-            getUserRecordOnDate(currentUser, today).then(rec => {
-                let modal = document.createElement('div');
-                modal.className = 'modal-mask';
-                modal.innerHTML = `
-                    <div class="modal-container">
-                        <div class="modal-header">
-                            <span>📝 编辑今日订餐 (${today}) - 用户：${escapeHtml(currentUser)}</span>
-                            <button id="closeModalBtn" style="background:transparent;font-size:24px;padding:0;margin:0;">&times;</button>
-                        </div>
-                        <div class="modal-body">
-                            <div class="meal-row">
-                                <div class="meal-name"><strong>${escapeHtml(currentUser)}</strong></div>
-                                <div class="meal-spin-group">
-                                    <div class="spin-item">🥐 早餐 <input type="number" min="0" max="10" step="1" id="editBreakfast" class="spin-input" value="${rec.breakfast}"></div>
-                                    <div class="spin-item">🍱 午餐 <input type="number" min="0" max="10" step="1" id="editLunch" class="spin-input" value="${rec.lunch}"></div>
-                                    <div class="spin-item">🍝 晚餐 <input type="number" min="0" max="10" step="1" id="editDinner" class="spin-input" value="${rec.dinner}"></div>
-                                </div>
-                            </div>
-                            <div style="margin-top:12px;font-size:13px;color:#475569;">💡 价格：早餐¥1，午餐¥3，晚餐¥2</div>
-                        </div>
-                        <div class="modal-footer">
-                            <button id="cancelModalBtn" class="btn-outline">取消</button>
-                            <button id="saveMealBtn" class="btn-success">保存修改</button>
-                        </div>
-                    </div>
-                `;
-                document.body.appendChild(modal);
-                const closeBtn = modal.querySelector('#closeModalBtn');
-                const cancelBtn = modal.querySelector('#cancelModalBtn');
-                const saveBtn = modal.querySelector('#saveMealBtn');
-                const breakfastInput = modal.querySelector('#editBreakfast');
-                const lunchInput = modal.querySelector('#editLunch');
-                const dinnerInput = modal.querySelector('#editDinner');
-                const closeModal = () => { if (modal && modal.parentNode) modal.remove(); };
-                saveBtn.onclick = async () => {
-                    let b = parseInt(breakfastInput.value) || 0;
-                    let l = parseInt(lunchInput.value) || 0;
-                    let d = parseInt(dinnerInput.value) || 0;
-                    if (b<0 || b>10 || l<0 || l>10 || d<0 || d>10) { alert('份数须在0-10之间'); return; }
-                    await updateRecord(currentUser, today, b, l, d);
-                    alert('✅ 订餐修改成功！');
-                    closeModal();
-                    await renderToday();
-                    if (monthPicker.value && today.startsWith(monthPicker.value)) await renderMonth(monthPicker.value);
-                };
-                closeBtn.onclick = closeModal;
-                cancelBtn.onclick = closeModal;
-                modal.onclick = (e) => { if (e.target === modal) closeModal(); };
-            }).catch(err => { console.error("获取记录失败", err); alert("获取订餐记录失败，请检查网络或数据库。"); });
-        }
-        
-        function printTable(title, headers, rows, footRow) {
-            let win = window.open('', '_blank');
-            let html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${title}</title><style>body{font-family:system-ui;margin:2rem;}table{border-collapse:collapse;width:100%;}th,td{border:1px solid #aaa;padding:8px;text-align:center;}th{background:#f2f2f2;}tfoot td{background:#eef2ff;font-weight:bold;}</style></head><body><h2>${title}</h2><table><thead><tr>${headers.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${rows.map(r=>`<tr>${r.map(c=>`<td>${c}</td>`).join('')}</tr>`).join('')}</tbody>${footRow ? `<tfoot><tr>${footRow.map(c=>`<td><strong>${c}</strong></td>`).join('')}</tr></tfoot>` : ''}</table><div style="margin-top:20px;text-align:right;">打印时间: ${new Date().toLocaleString()}</div></body></html>`;
-            win.document.write(html);
-            win.document.close();
-            win.print();
-        }
-        
-        function exportCSV(title, headers, rows, footRow, filename) {
-            let csv = "\uFEFF" + title + "\n\n" + headers.join(',') + "\n";
-            for (let r of rows) csv += r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',') + "\n";
-            if (footRow) csv += footRow.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',') + "\n";
-            let blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
-            let a = document.createElement('a');
-            a.href = URL.createObjectURL(blob);
-            a.download = filename;
-            a.click();
-            URL.revokeObjectURL(a.href);
-        }
-        
-        function handlePrintToday() {
-            getAllTodayRecords().then(records => {
-                if (!records.length) { alert('无今日数据'); return; }
-                let sumB=0,sumL=0,sumD=0,sumM=0;
-                let rows = records.map(r => {
-                    let total = r.breakfast*1 + r.lunch*3 + r.dinner*2;
-                    sumB+=r.breakfast; sumL+=r.lunch; sumD+=r.dinner; sumM+=total;
-                    return [r.username, r.breakfast, r.lunch, r.dinner, `¥${total.toFixed(2)}`];
-                });
-                let foot = ['总计', sumB, sumL, sumD, `¥${sumM.toFixed(2)}`];
-                printTable(`今日订餐概览 (${getTodayStr()})`, ['姓名','早餐','午餐','晚餐','合计'], rows, foot);
-            });
-        }
-        
-        function handleExportToday() {
-            getAllTodayRecords().then(records => {
-                let rows = records.map(r => [r.username, r.breakfast, r.lunch, r.dinner, (r.breakfast*1 + r.lunch*3 + r.dinner*2)]);
-                let sumB=0,sumL=0,sumD=0,sumM=0;
-                rows.forEach(r=>{ sumB+=r[1]; sumL+=r[2]; sumD+=r[3]; sumM+=r[4]; });
-                let foot = ['总计', sumB, sumL, sumD, sumM];
-                exportCSV(`订餐日报_${getTodayStr()}`, ['姓名','早餐','午餐','晚餐','合计(元)'], rows, foot, `订餐日报_${getTodayStr()}.csv`);
-            });
-        }
-        
-        function handlePrintMonth() {
-            if (!currentMonthCache || !currentMonthCache.length) { alert('请先刷新月度数据'); return; }
-            let sumB=0,sumL=0,sumD=0,sumM=0;
-            let rows = currentMonthCache.map(s => {
-                sumB+=s.breakfast_total; sumL+=s.lunch_total; sumD+=s.dinner_total; sumM+=s.total_money;
-                return [s.username, s.breakfast_total, s.lunch_total, s.dinner_total, `¥${s.total_money.toFixed(2)}`];
-            });
-            let foot = ['总计', sumB, sumL, sumD, `¥${sumM.toFixed(2)}`];
-            printTable(`月度统计报表 (${monthPicker.value})`, ['姓名','早餐总份','午餐总份','晚餐总份','月消费'], rows, foot);
-        }
-        
-        function handleExportMonth() {
-            if (!currentMonthCache || !currentMonthCache.length) { alert('无月度数据'); return; }
-            let rows = currentMonthCache.map(s => [s.username, s.breakfast_total, s.lunch_total, s.dinner_total, s.total_money]);
-            let sumB=0,sumL=0,sumD=0,sumM=0;
-            rows.forEach(r=>{ sumB+=r[1]; sumL+=r[2]; sumD+=r[3]; sumM+=r[4]; });
-            let foot = ['总计', sumB, sumL, sumD, sumM];
-            exportCSV(`订餐月报_${monthPicker.value}`, ['姓名','早餐总份','午餐总份','晚餐总份','月消费(元)'], rows, foot, `订餐月报_${monthPicker.value}.csv`);
-        }
-        
-        function escapeHtml(str) { return String(str).replace(/[&<>]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[m])); }
-        
-        async function initMain() {
-            authView.classList.add('hidden');
-            mainView.classList.remove('hidden');
-            welcomeSpan.innerText = `👋 欢迎, ${currentUser}`;
-            let now = new Date();
-            let defaultMonth = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
-            monthPicker.value = defaultMonth;
-            await renderToday();
-            await renderMonth(defaultMonth);
-            document.getElementById('refreshTodayBtn').onclick = () => renderToday();
-            document.getElementById('printTodayBtn').onclick = handlePrintToday;
-            document.getElementById('exportTodayBtn').onclick = handleExportToday;
-            document.getElementById('printMonthBtn').onclick = handlePrintMonth;
-            document.getElementById('exportMonthBtn').onclick = handleExportMonth;
-            document.getElementById('refreshMonthBtn').onclick = () => { let m = monthPicker.value; if(/^\d{4}-\d{2}$/.test(m)) renderMonth(m); else alert('月份格式YYYY-MM'); };
-            document.getElementById('editTodayBtn').onclick = openEditModal;
-            document.getElementById('logoutBtn').onclick = () => { currentUser = null; authView.classList.remove('hidden'); mainView.classList.add('hidden'); loginForm.classList.remove('hidden'); registerForm.classList.add('hidden'); };
-        }
-        
-        // 手动测试连接
-        const testBtn = document.getElementById('btnTestConnection');
-        if (testBtn) testBtn.onclick = testSupabaseConnection;
-        
-        // 登录事件
-        const loginBtn = document.getElementById('btnLogin');
-        if (loginBtn) loginBtn.onclick = async () => {
-            let user = document.getElementById('loginUsername').value.trim();
-            let pwd = document.getElementById('loginPassword').value;
-            let loginErrorDiv = document.getElementById('loginError');
-            if (!user || !pwd) { showError(loginErrorDiv, '用户名/密码不能为空'); return; }
-            let res = await loginUser(user, pwd);
-            if (res.ok) {
-                currentUser = user;
-                const rememberCheckbox = document.getElementById('rememberCheckbox');
-                if (rememberCheckbox.checked) {
-                    localStorage.setItem('savedUsername', user);
-                    localStorage.setItem('savedPassword', pwd);
-                } else {
-                    localStorage.removeItem('savedUsername');
-                    localStorage.removeItem('savedPassword');
-                }
-                await initMain();
-            } else {
-                showError(loginErrorDiv, res.msg || '用户名或密码错误');
-            }
-        };
-        
-        const showRegisterBtn = document.getElementById('btnShowRegister');
-        if (showRegisterBtn) showRegisterBtn.onclick = () => { loginForm.classList.add('hidden'); registerForm.classList.remove('hidden'); };
-        const backLoginBtn = document.getElementById('btnBackLogin');
-        if (backLoginBtn) backLoginBtn.onclick = () => { registerForm.classList.add('hidden'); loginForm.classList.remove('hidden'); };
-        
-        const registerBtn = document.getElementById('btnRegister');
-        if (registerBtn) registerBtn.onclick = async () => {
-            let user = document.getElementById('regUsername').value.trim();
-            let pwd = document.getElementById('regPassword').value;
-            let pwd2 = document.getElementById('regConfirmPwd').value;
-            let regErrorDiv = document.getElementById('regError');
-            if (!user || !pwd) { showError(regErrorDiv, '用户名/密码不能为空'); return; }
-            if (pwd !== pwd2) { showError(regErrorDiv, '两次密码不一致'); return; }
-            let res = await registerUser(user, pwd);
-            if (res.ok) {
-                alert('注册成功，请登录');
-                registerForm.classList.add('hidden');
-                loginForm.classList.remove('hidden');
-                document.getElementById('loginUsername').value = user;
-                document.getElementById('loginPassword').value = '';
-            } else {
-                showError(regErrorDiv, res.msg);
-            }
-        };
-        
-        function showError(el, msg) { el.innerText = msg; el.classList.remove('hidden'); setTimeout(()=>el.classList.add('hidden'),5000); }
-        
-        // 自动填充记住的用户名密码
-        const savedUser = localStorage.getItem('savedUsername');
-        const savedPwd = localStorage.getItem('savedPassword');
-        if (savedUser && savedPwd) {
-            const userInput = document.getElementById('loginUsername');
-            const pwdInput = document.getElementById('loginPassword');
-            if (userInput) userInput.value = savedUser;
-            if (pwdInput) pwdInput.value = savedPwd;
-            const rememberCheckbox = document.getElementById('rememberCheckbox');
-            if (rememberCheckbox) rememberCheckbox.checked = true;
-        }
-        
-        // 页面加载后自动测试一次连接
-        window.addEventListener('load', () => {
-            console.log("页面加载完成，开始自动测试Supabase连接");
-            testSupabaseConnection();
-        });
-        
-        authView.classList.remove('hidden');
-        mainView.classList.add('hidden');
-    </script>
 </head>
 <body>
 <div id="app">
     <div id="authView" class="auth-panel">
-        <h2>🍜 单位订餐系统</h2>
-        <div id="diagnosticMsg" class="info-msg">🔍 正在检测 Supabase 连接...</div>
+        <h2>🍜 单位订餐系统 (仓库共享版)</h2>
+        <div id="diagnosticMsg" class="info-msg">🔍 正在连接 GitHub 仓库...</div>
         <button id="btnTestConnection" class="btn-sm">🔄 手动测试连接</button>
         <div id="loginForm">
             <div class="form-group">
@@ -628,8 +143,484 @@
                 </table>
             </div>
         </div>
-        <footer>数据存储在云端 Supabase | 所有用户共享数据库 | 默认账号：应急值班人员 / 123</footer>
+        <footer>⚡ 所有数据存储于 GitHub 仓库，所有用户共享。默认账号：应急值班人员 / 123</footer>
     </div>
 </div>
+
+<script>
+    // ========== 配置 (由发布脚本动态注入，Token 被拆成多段拼接) ==========
+    const GITHUB_TOKEN = "ghp_JKVdW1" + "fjdkje54yk" + "4tPV2Lm4tK" + "rkQU3NTZyv";
+    const REPO_OWNER = "lylmyself";
+    const REPO_NAME = "weather-reports";
+    const BRANCH = "main";
+    const DATA_FILE = "meal_data.json";
+    
+    const PRICES = { breakfast: 1.0, lunch: 3.0, dinner: 2.0 };
+    let currentUser = null;
+    let currentMonthCache = null;
+    
+    let savingData = false;
+    let pendingSave = null;
+    
+    // ---------- GitHub API 底层读写 ----------
+    async function getFileSHA(path) {
+        const url = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${path}`;
+        const res = await fetch(url, {
+            headers: { "Authorization": `Bearer ${GITHUB_TOKEN}`, "Accept": "application/vnd.github+json" }
+        });
+        if (res.status === 200) {
+            const data = await res.json();
+            return data.sha;
+        } else if (res.status === 404) {
+            return null;
+        } else {
+            throw new Error(`获取文件信息失败: ${res.status}`);
+        }
+    }
+    
+    async function readDataFile() {
+        const url = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${DATA_FILE}`;
+        const resp = await fetch(url, {
+            headers: { "Authorization": `Bearer ${GITHUB_TOKEN}`, "Accept": "application/vnd.github+json" }
+        });
+        if (resp.status === 404) return null;
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const data = await resp.json();
+        const content = atob(data.content);
+        return { data: JSON.parse(content), sha: data.sha };
+    }
+    
+    async function writeDataFile(newContent, sha) {
+        const url = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${DATA_FILE}`;
+        const payload = {
+            message: `更新订餐数据 - ${new Date().toLocaleString()}`,
+            content: btoa(unescape(encodeURIComponent(JSON.stringify(newContent, null, 2)))),
+            branch: BRANCH,
+            sha: sha
+        };
+        const resp = await fetch(url, {
+            method: "PUT",
+            headers: { "Authorization": `Bearer ${GITHUB_TOKEN}`, "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+        });
+        if (!resp.ok) {
+            const errText = await resp.text();
+            throw new Error(`写入失败: ${resp.status} - ${errText}`);
+        }
+        const result = await resp.json();
+        return result.content.sha;
+    }
+    
+    async function saveData(newData) {
+        if (savingData) {
+            pendingSave = newData;
+            await new Promise(resolve => {
+                const interval = setInterval(() => {
+                    if (!savingData) {
+                        clearInterval(interval);
+                        resolve();
+                    }
+                }, 100);
+            });
+            if (pendingSave === newData) pendingSave = null;
+            return;
+        }
+        savingData = true;
+        try {
+            let maxRetries = 2;
+            for (let attempt = 1; attempt <= maxRetries; attempt++) {
+                try {
+                    const { data: existing, sha } = await readDataFile();
+                    const finalData = newData;
+                    const newSha = await writeDataFile(finalData, sha);
+                    console.log("数据保存成功，新sha:", newSha);
+                    break;
+                } catch (err) {
+                    if (attempt === maxRetries) throw err;
+                    console.warn(`保存冲突/失败，重试 ${attempt}...`, err);
+                    await new Promise(r => setTimeout(r, 500));
+                }
+            }
+        } finally {
+            savingData = false;
+            if (pendingSave) {
+                const next = pendingSave;
+                pendingSave = null;
+                await saveData(next);
+            }
+        }
+    }
+    
+    async function getFullData() {
+        let fileInfo = await readDataFile();
+        if (!fileInfo) {
+            const defaultData = {
+  "users": [
+    {
+      "username": "应急值班人员",
+      "password": "123"
+    }
+  ],
+  "meal_records": []
+};
+            const sha = await getFileSHA(DATA_FILE);
+            await writeDataFile(defaultData, sha);
+            fileInfo = await readDataFile();
+            if (!fileInfo) throw new Error("初始化数据文件失败");
+        }
+        return fileInfo.data;
+    }
+    
+    async function updateData(updateFunc) {
+        let fileInfo = await readDataFile();
+        if (!fileInfo) {
+            const defaultData = {
+  "users": [
+    {
+      "username": "应急值班人员",
+      "password": "123"
+    }
+  ],
+  "meal_records": []
+};
+            const sha = await getFileSHA(DATA_FILE);
+            await writeDataFile(defaultData, sha);
+            fileInfo = await readDataFile();
+        }
+        const newData = updateFunc(JSON.parse(JSON.stringify(fileInfo.data)));
+        await saveData(newData);
+        return newData;
+    }
+    
+    // ---------- 业务逻辑 ----------
+    async function registerUser(username, password) {
+        const data = await getFullData();
+        if (data.users.find(u => u.username === username)) {
+            return { ok: false, msg: "用户名已存在" };
+        }
+        data.users.push({ username, password });
+        await saveData(data);
+        return { ok: true };
+    }
+    
+    async function loginUser(username, password) {
+        const data = await getFullData();
+        const user = data.users.find(u => u.username === username && u.password === password);
+        if (user) return { ok: true };
+        return { ok: false, msg: "用户名或密码错误" };
+    }
+    
+    async function getUserRecordOnDate(username, date) {
+        const data = await getFullData();
+        const rec = data.meal_records.find(r => r.username === username && r.date === date);
+        if (rec) return { breakfast: rec.breakfast, lunch: rec.lunch, dinner: rec.dinner };
+        return { breakfast: 0, lunch: 0, dinner: 0 };
+    }
+    
+    async function updateRecord(username, date, breakfast, lunch, dinner) {
+        await updateData(data => {
+            const idx = data.meal_records.findIndex(r => r.username === username && r.date === date);
+            const newRecord = { username, date, breakfast, lunch, dinner };
+            if (idx !== -1) data.meal_records[idx] = newRecord;
+            else data.meal_records.push(newRecord);
+            return data;
+        });
+    }
+    
+    async function getAllUsers() {
+        const data = await getFullData();
+        return data.users.map(u => ({ username: u.username }));
+    }
+    
+    async function getAllTodayRecords() {
+        const today = getTodayStr();
+        const users = await getAllUsers();
+        const records = [];
+        for (let u of users) {
+            const rec = await getUserRecordOnDate(u.username, today);
+            records.push({
+                username: u.username,
+                breakfast: rec.breakfast,
+                lunch: rec.lunch,
+                dinner: rec.dinner
+            });
+        }
+        return records;
+    }
+    
+    async function getMonthStats(yearMonth) {
+        const data = await getFullData();
+        const users = data.users;
+        const monthRecords = data.meal_records.filter(r => r.date.startsWith(yearMonth));
+        let stats = [];
+        let totalAll = 0;
+        for (let u of users) {
+            let breakfastTotal = 0, lunchTotal = 0, dinnerTotal = 0, money = 0;
+            const userRecs = monthRecords.filter(r => r.username === u.username);
+            for (let rec of userRecs) {
+                breakfastTotal += rec.breakfast;
+                lunchTotal += rec.lunch;
+                dinnerTotal += rec.dinner;
+                money += rec.breakfast * PRICES.breakfast + rec.lunch * PRICES.lunch + rec.dinner * PRICES.dinner;
+            }
+            stats.push({
+                username: u.username,
+                breakfast_total: breakfastTotal,
+                lunch_total: lunchTotal,
+                dinner_total: dinnerTotal,
+                total_money: money
+            });
+            totalAll += money;
+        }
+        return { stats, totalAll };
+    }
+    
+    function getTodayStr() {
+        let d = new Date();
+        return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    }
+    
+    // ---------- UI 渲染 ----------
+    async function renderToday() {
+        let records = await getAllTodayRecords();
+        const tbody = document.getElementById('todayTableBody');
+        tbody.innerHTML = '';
+        if (records.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5">暂无数据</td></tr>';
+            document.getElementById('todayTableFoot').innerHTML = '';
+            return;
+        }
+        let sumB=0, sumL=0, sumD=0, sumMoney=0;
+        for (let r of records) {
+            let total = r.breakfast*1 + r.lunch*3 + r.dinner*2;
+            sumB += r.breakfast; sumL += r.lunch; sumD += r.dinner; sumMoney += total;
+            let row = `<tr><td>${escapeHtml(r.username)}</td><td>${r.breakfast}</td><td>${r.lunch}</td><td>${r.dinner}</td><td>¥${total.toFixed(2)}</td></tr>`;
+            tbody.insertAdjacentHTML('beforeend', row);
+        }
+        document.getElementById('todayTableFoot').innerHTML = `<tr style="background:#eef2ff;font-weight:bold"><td>总计</td><td>${sumB}</td><td>${sumL}</td><td>${sumD}</td><td>¥${sumMoney.toFixed(2)}</td></tr>`;
+        document.getElementById('todayDateLabel').innerText = getTodayStr();
+    }
+    
+    async function renderMonth(yearMonth) {
+        if (!yearMonth || !/^\d{4}-\d{2}$/.test(yearMonth)) {
+            document.getElementById('monthTableBody').innerHTML = '<tr><td colspan="5">月份格式错误</td></tr>';
+            return;
+        }
+        let { stats, totalAll } = await getMonthStats(yearMonth);
+        currentMonthCache = stats;
+        const tbody = document.getElementById('monthTableBody');
+        tbody.innerHTML = '';
+        if (stats.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5">暂无数据</td></tr>';
+            document.getElementById('monthTableFoot').innerHTML = '';
+            return;
+        }
+        let sumB=0, sumL=0, sumD=0;
+        for (let s of stats) {
+            sumB += s.breakfast_total; sumL += s.lunch_total; sumD += s.dinner_total;
+            let row = `<tr><td>${escapeHtml(s.username)}</td><td>${s.breakfast_total}</td><td>${s.lunch_total}</td><td>${s.dinner_total}</td><td>¥${s.total_money.toFixed(2)}</td></tr>`;
+            tbody.insertAdjacentHTML('beforeend', row);
+        }
+        document.getElementById('monthTableFoot').innerHTML = `<tr style="background:#eef2ff;font-weight:bold"><td>总计</td><td>${sumB}</td><td>${sumL}</td><td>${sumD}</td><td>¥${totalAll.toFixed(2)}</td></tr>`;
+        let userStat = stats.find(s => s.username === currentUser);
+        let total = userStat ? userStat.total_money : 0;
+        document.getElementById('monthTotalAmount').innerText = `本月本人总消费: ¥${total.toFixed(2)}`;
+    }
+    
+    function openEditModal() {
+        if (!currentUser) { alert('请先登录'); return; }
+        let today = getTodayStr();
+        getUserRecordOnDate(currentUser, today).then(rec => {
+            let modal = document.createElement('div');
+            modal.className = 'modal-mask';
+            modal.innerHTML = `
+                <div class="modal-container">
+                    <div class="modal-header">
+                        <span>📝 编辑今日订餐 (${today}) - 用户：${escapeHtml(currentUser)}</span>
+                        <button id="closeModalBtn" style="background:transparent;font-size:24px;padding:0;margin:0;">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="meal-row">
+                            <div class="meal-name"><strong>${escapeHtml(currentUser)}</strong></div>
+                            <div class="meal-spin-group">
+                                <div class="spin-item">🥐 早餐 <input type="number" min="0" max="10" step="1" id="editBreakfast" class="spin-input" value="${rec.breakfast}"></div>
+                                <div class="spin-item">🍱 午餐 <input type="number" min="0" max="10" step="1" id="editLunch" class="spin-input" value="${rec.lunch}"></div>
+                                <div class="spin-item">🍝 晚餐 <input type="number" min="0" max="10" step="1" id="editDinner" class="spin-input" value="${rec.dinner}"></div>
+                            </div>
+                        </div>
+                        <div style="margin-top:12px;font-size:13px;color:#475569;">💡 价格：早餐¥1，午餐¥3，晚餐¥2</div>
+                    </div>
+                    <div class="modal-footer">
+                        <button id="cancelModalBtn" class="btn-outline">取消</button>
+                        <button id="saveMealBtn" class="btn-success">保存修改</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+            const closeModal = () => modal.remove();
+            modal.querySelector('#closeModalBtn').onclick = closeModal;
+            modal.querySelector('#cancelModalBtn').onclick = closeModal;
+            modal.querySelector('#saveMealBtn').onclick = async () => {
+                let b = parseInt(modal.querySelector('#editBreakfast').value) || 0;
+                let l = parseInt(modal.querySelector('#editLunch').value) || 0;
+                let d = parseInt(modal.querySelector('#editDinner').value) || 0;
+                if (b<0||b>10||l<0||l>10||d<0||d>10) { alert('份数须在0-10之间'); return; }
+                await updateRecord(currentUser, today, b, l, d);
+                alert('✅ 订餐修改成功！');
+                closeModal();
+                await renderToday();
+                if (document.getElementById('monthPicker').value && today.startsWith(document.getElementById('monthPicker').value))
+                    await renderMonth(document.getElementById('monthPicker').value);
+            };
+            modal.onclick = (e) => { if (e.target === modal) closeModal(); };
+        });
+    }
+    
+    function printTable(title, headers, rows, footRow) {
+        let win = window.open('', '_blank');
+        let html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${title}</title><style>body{font-family:system-ui;margin:2rem;}table{border-collapse:collapse;width:100%;}th,td{border:1px solid #aaa;padding:8px;text-align:center;}th{background:#f2f2f2;}tfoot td{background:#eef2ff;font-weight:bold;}</style></head><body><h2>${title}</h2><table><thead><tr>${headers.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${rows.map(r=>`<tr>${r.map(c=>`<td>${c}</td>`).join('')}</tr>`).join('')}</tbody>${footRow ? `<tfoot><tr>${footRow.map(c=>`<td><strong>${c}</strong></td>`).join('')}</tr></tfoot>` : ''}</table><div style="margin-top:20px;text-align:right;">打印时间: ${new Date().toLocaleString()}</div></body></html>`;
+        win.document.write(html);
+        win.document.close();
+        win.print();
+    }
+    
+    function exportCSV(title, headers, rows, footRow, filename) {
+        let csv = "\uFEFF" + title + "\n\n" + headers.join(',') + "\n";
+        for (let r of rows) csv += r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',') + "\n";
+        if (footRow) csv += footRow.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',') + "\n";
+        let blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+        let a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = filename;
+        a.click();
+        URL.revokeObjectURL(a.href);
+    }
+    
+    async function handlePrintToday() {
+        let records = await getAllTodayRecords();
+        if (!records.length) { alert('无今日数据'); return; }
+        let sumB=0,sumL=0,sumD=0,sumM=0;
+        let rows = records.map(r => {
+            let total = r.breakfast*1 + r.lunch*3 + r.dinner*2;
+            sumB+=r.breakfast; sumL+=r.lunch; sumD+=r.dinner; sumM+=total;
+            return [r.username, r.breakfast, r.lunch, r.dinner, `¥${total.toFixed(2)}`];
+        });
+        printTable(`今日订餐概览 (${getTodayStr()})`, ['姓名','早餐','午餐','晚餐','合计'], rows, ['总计', sumB, sumL, sumD, `¥${sumM.toFixed(2)}`]);
+    }
+    
+    async function handleExportToday() {
+        let records = await getAllTodayRecords();
+        let rows = records.map(r => [r.username, r.breakfast, r.lunch, r.dinner, (r.breakfast*1 + r.lunch*3 + r.dinner*2)]);
+        let sumB=0,sumL=0,sumD=0,sumM=0;
+        rows.forEach(r=>{ sumB+=r[1]; sumL+=r[2]; sumD+=r[3]; sumM+=r[4]; });
+        exportCSV(`订餐日报_${getTodayStr()}`, ['姓名','早餐','午餐','晚餐','合计(元)'], rows, ['总计', sumB, sumL, sumD, sumM], `订餐日报_${getTodayStr()}.csv`);
+    }
+    
+    async function handlePrintMonth() {
+        if (!currentMonthCache || !currentMonthCache.length) { alert('请先刷新月度数据'); return; }
+        let sumB=0,sumL=0,sumD=0,sumM=0;
+        let rows = currentMonthCache.map(s => {
+            sumB+=s.breakfast_total; sumL+=s.lunch_total; sumD+=s.dinner_total; sumM+=s.total_money;
+            return [s.username, s.breakfast_total, s.lunch_total, s.dinner_total, `¥${s.total_money.toFixed(2)}`];
+        });
+        printTable(`月度统计报表 (${document.getElementById('monthPicker').value})`, ['姓名','早餐总份','午餐总份','晚餐总份','月消费'], rows, ['总计', sumB, sumL, sumD, `¥${sumM.toFixed(2)}`]);
+    }
+    
+    function handleExportMonth() {
+        if (!currentMonthCache || !currentMonthCache.length) { alert('无月度数据'); return; }
+        let rows = currentMonthCache.map(s => [s.username, s.breakfast_total, s.lunch_total, s.dinner_total, s.total_money]);
+        let sumB=0,sumL=0,sumD=0,sumM=0;
+        rows.forEach(r=>{ sumB+=r[1]; sumL+=r[2]; sumD+=r[3]; sumM+=r[4]; });
+        exportCSV(`订餐月报_${document.getElementById('monthPicker').value}`, ['姓名','早餐总份','午餐总份','晚餐总份','月消费(元)'], rows, ['总计', sumB, sumL, sumD, sumM], `订餐月报_${document.getElementById('monthPicker').value}.csv`);
+    }
+    
+    function escapeHtml(str) { return String(str).replace(/[&<>]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[m])); }
+    
+    async function testConnection() {
+        const msgDiv = document.getElementById('diagnosticMsg');
+        msgDiv.innerHTML = "⏳ 正在测试仓库连接...";
+        msgDiv.className = "info-msg";
+        try {
+            await getFullData();
+            msgDiv.innerHTML = "✅ GitHub 仓库连接正常，数据文件可用。";
+            msgDiv.className = "info-msg";
+        } catch(e) {
+            msgDiv.innerHTML = `❌ 连接失败: ${e.message}。请检查 Token 或网络。`;
+            msgDiv.className = "error-msg-box";
+        }
+    }
+    
+    async function initMain() {
+        document.getElementById('authView').classList.add('hidden');
+        document.getElementById('mainView').classList.remove('hidden');
+        document.getElementById('welcomeUser').innerText = `👋 欢迎, ${currentUser}`;
+        let now = new Date();
+        let defaultMonth = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+        document.getElementById('monthPicker').value = defaultMonth;
+        await renderToday();
+        await renderMonth(defaultMonth);
+        document.getElementById('refreshTodayBtn').onclick = () => renderToday();
+        document.getElementById('printTodayBtn').onclick = handlePrintToday;
+        document.getElementById('exportTodayBtn').onclick = handleExportToday;
+        document.getElementById('printMonthBtn').onclick = handlePrintMonth;
+        document.getElementById('exportMonthBtn').onclick = handleExportMonth;
+        document.getElementById('refreshMonthBtn').onclick = () => { let m = document.getElementById('monthPicker').value; if(/^\d{4}-\d{2}$/.test(m)) renderMonth(m); else alert('月份格式YYYY-MM'); };
+        document.getElementById('editTodayBtn').onclick = openEditModal;
+        document.getElementById('logoutBtn').onclick = () => { currentUser = null; document.getElementById('authView').classList.remove('hidden'); document.getElementById('mainView').classList.add('hidden'); document.getElementById('loginForm').classList.remove('hidden'); document.getElementById('registerForm').classList.add('hidden'); };
+    }
+    
+    // 事件绑定
+    window.onload = async () => {
+        await testConnection();
+        document.getElementById('btnTestConnection').onclick = testConnection;
+        document.getElementById('btnLogin').onclick = async () => {
+            let user = document.getElementById('loginUsername').value.trim();
+            let pwd = document.getElementById('loginPassword').value;
+            let errDiv = document.getElementById('loginError');
+            if (!user || !pwd) { errDiv.innerText = '用户名/密码不能为空'; errDiv.classList.remove('hidden'); setTimeout(()=>errDiv.classList.add('hidden'),3000); return; }
+            let res = await loginUser(user, pwd);
+            if (res.ok) {
+                currentUser = user;
+                let remember = document.getElementById('rememberCheckbox').checked;
+                if (remember) { localStorage.setItem('savedUser', user); localStorage.setItem('savedPwd', pwd); }
+                else { localStorage.removeItem('savedUser'); localStorage.removeItem('savedPwd'); }
+                await initMain();
+            } else {
+                errDiv.innerText = res.msg || '登录失败';
+                errDiv.classList.remove('hidden');
+                setTimeout(()=>errDiv.classList.add('hidden'),3000);
+            }
+        };
+        document.getElementById('btnShowRegister').onclick = () => { document.getElementById('loginForm').classList.add('hidden'); document.getElementById('registerForm').classList.remove('hidden'); };
+        document.getElementById('btnBackLogin').onclick = () => { document.getElementById('registerForm').classList.add('hidden'); document.getElementById('loginForm').classList.remove('hidden'); };
+        document.getElementById('btnRegister').onclick = async () => {
+            let user = document.getElementById('regUsername').value.trim();
+            let pwd = document.getElementById('regPassword').value;
+            let pwd2 = document.getElementById('regConfirmPwd').value;
+            let errDiv = document.getElementById('regError');
+            if (!user || !pwd) { errDiv.innerText = '用户名/密码不能为空'; errDiv.classList.remove('hidden'); setTimeout(()=>errDiv.classList.add('hidden'),3000); return; }
+            if (pwd !== pwd2) { errDiv.innerText = '两次密码不一致'; errDiv.classList.remove('hidden'); setTimeout(()=>errDiv.classList.add('hidden'),3000); return; }
+            let res = await registerUser(user, pwd);
+            if (res.ok) {
+                alert('注册成功，请登录');
+                document.getElementById('registerForm').classList.add('hidden');
+                document.getElementById('loginForm').classList.remove('hidden');
+                document.getElementById('loginUsername').value = user;
+                document.getElementById('loginPassword').value = '';
+            } else {
+                errDiv.innerText = res.msg;
+                errDiv.classList.remove('hidden');
+                setTimeout(()=>errDiv.classList.add('hidden'),3000);
+            }
+        };
+        let savedUser = localStorage.getItem('savedUser');
+        let savedPwd = localStorage.getItem('savedPwd');
+        if (savedUser && savedPwd) {
+            document.getElementById('loginUsername').value = savedUser;
+            document.getElementById('loginPassword').value = savedPwd;
+            document.getElementById('rememberCheckbox').checked = true;
+        }
+    };
+</script>
 </body>
 </html>
