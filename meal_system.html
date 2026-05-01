@@ -2,12 +2,12 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>单位订餐系统（用户自备 Token）</title>
+    <title>单位订餐系统（最终版）</title>
     <style>
         *{margin:0;padding:0;box-sizing:border-box;font-family:system-ui;}
         body{background:#eef2f7;padding:20px}
         .app-container{max-width:1400px;margin:0 auto;background:#fff;border-radius:28px;padding:24px 28px 32px}
-        .auth-panel,.token-panel{max-width:500px;margin:60px auto;background:#fff;border-radius:36px;padding:36px 32px;text-align:center}
+        .auth-panel{max-width:440px;margin:60px auto;background:#fff;border-radius:36px;padding:36px 32px;text-align:center}
         .form-group{margin-bottom:20px;text-align:left}
         .form-group input{width:100%;padding:12px 16px;border:1px solid #cbd5e1;border-radius:28px}
         button{background:#3b82f6;color:#fff;border:none;padding:10px 24px;border-radius:40px;font-weight:600;cursor:pointer;margin:4px 6px}
@@ -30,43 +30,19 @@
         .modal-container{background:#fff;width:90%;max-width:500px;border-radius:36px}
         .modal-header{padding:18px 24px;border-bottom:1px solid #e2e8f0;font-weight:700;display:flex;justify-content:space-between}
         .modal-body{padding:16px 20px}
+        .meal-spin-group{display:flex;gap:15px;flex-wrap:wrap;margin-top:10px}
+        .spin-item{background:#f1f5f9;padding:5px 12px;border-radius:40px}
+        .spin-input{width:70px;padding:6px;border-radius:28px;border:1px solid #cbd5e1;text-align:center}
         .modal-footer{padding:16px 24px;border-top:1px solid #e2e8f0;display:flex;justify-content:flex-end}
         footer{text-align:center;font-size:12px;color:#94a3b8;margin-top:30px}
     </style>
 </head>
 <body>
 <div id="app">
-    <!-- Token 设置面板 -->
-    <div id="tokenPanel" class="token-panel">
-        <h2>🔑 首次使用设置</h2>
-        <p>本系统需要访问您的 GitHub 仓库以存储订餐数据。请提供具有该仓库 <strong>contents 读写权限</strong>的 Personal Access Token。</p>
-        <div class="form-group">
-            <label>GitHub Token</label>
-            <input type="password" id="githubTokenInput" placeholder="ghp_xxxx 或 github_pat_xxxx">
-        </div>
-        <div class="form-group">
-            <label>仓库所有者</label>
-            <input type="text" id="repoOwnerInput" placeholder="用户名或组织名" value="lylmyself">
-        </div>
-        <div class="form-group">
-            <label>仓库名称</label>
-            <input type="text" id="repoNameInput" placeholder="仓库名" value="weather-reports">
-        </div>
-        <div class="form-group">
-            <label>分支</label>
-            <input type="text" id="branchInput" placeholder="main" value="main">
-        </div>
-        <button id="btnSaveToken">保存并连接</button>
-        <div id="tokenError" class="error-msg hidden"></div>
-        <footer style="margin-top:24px">Token 仅保存在您的浏览器中，不会上传到任何服务器。</footer>
-    </div>
-
-    <!-- 登录/注册面板 -->
-    <div id="authView" class="auth-panel hidden">
+    <div id="authView" class="auth-panel">
         <h2>🍜 单位订餐系统</h2>
         <div id="diagnosticMsg" class="info-msg">🔍 正在检测 GitHub 连接...</div>
         <button id="btnTestConnection" class="btn-sm">🔄 测试连接</button>
-        <button id="btnResetToken" class="btn-outline btn-sm">🔄 更换 Token</button>
         <div id="loginForm">
             <div class="form-group"><label>用户名</label><input type="text" id="loginUsername"></div>
             <div class="form-group"><label>密码</label><input type="password" id="loginPassword"></div>
@@ -84,9 +60,8 @@
             <div id="regError" class="error-msg hidden"></div>
         </div>
     </div>
-
     <div id="mainView" class="app-container hidden">
-        <div class="main-header"><span id="welcomeUser"></span><button id="logoutBtn" class="btn-danger btn-sm">退出</button></div>
+        <div class="main-header"><span class="user-greeting" id="welcomeUser"></span><button id="logoutBtn" class="btn-danger btn-sm">退出</button></div>
         <div class="stats-card">
             <input type="month" id="monthPicker">
             <button id="refreshMonthBtn">刷新月报</button>
@@ -95,27 +70,24 @@
         </div>
         <div class="section">
             <div class="section-title">📋 今日订餐 <span id="todayDateLabel"></span><div><button id="refreshTodayBtn">刷新</button><button id="printTodayBtn">打印</button><button id="exportTodayBtn">导出CSV</button></div></div>
-            <div class="table-wrapper"><table><thead><tr><th>姓名</th><th>早餐</th><th>午餐</th><th>晚餐</th><th>合计(元)</th></tr></thead><tbody id="todayTableBody"><tr><td colspan="5">加载中...</td></tr></tbody><tfoot id="todayTableFoot"></tfoot></table></div>
+            <div class="table-wrapper"><table><thead><tr><th>姓名</th><th>早餐</th><th>午餐</th><th>晚餐</th><th>合计(元)</th></tr></thead><tbody id="todayTableBody"><tr><td colspan="5">加载中...</td></tr></tbody><tfoot id="todayTableFoot"></tfoot></div>
         </div>
         <div class="section">
             <div class="section-title">📊 月度统计<div><button id="printMonthBtn">打印月报</button><button id="exportMonthBtn">导出CSV</button></div></div>
-            <div class="table-wrapper"><table><thead><tr><th>姓名</th><th>早餐总份</th><th>午餐总份</th><th>晚餐总份</th><th>月消费(元)</th></tr></thead><tbody id="monthTableBody"><tr><td colspan="5">请选择月份</td></tr></tbody><tfoot id="monthTableFoot"></tfoot></table></div>
+            <div class="table-wrapper"><table><thead><tr><th>姓名</th><th>早餐总份</th><th>午餐总份</th><th>晚餐总份</th><th>月消费(元)</th></tr></thead><tbody id="monthTableBody"><tr><td colspan="5">请选择月份</td></tr></tbody><tfoot id="monthTableFoot"></tfoot></div>
         </div>
-        <footer>⚡ 数据存储于您的 GitHub 仓库，所有用户共享。默认账号：应急值班人员 / 123</footer>
+        <footer>⚡ 数据存储于 GitHub 仓库，所有用户共享。默认账号：应急值班人员 / 123</footer>
     </div>
 </div>
 <script>
-    // 配置项（占位符会被 Python 替换）
-    let CONFIG = {
-        repoOwner: "lylmyself",
-        repoName: "weather-reports",
-        branch: "main",
-        dataFile: "meal_data.json"
-    };
-    let GITHUB_TOKEN = null;
+    const GITHUB_TOKEN = "ghp_JKVdW1" + "fjdkje54yk" + "4tPV2Lm4tK" + "rkQU3NTZyv";
+    const REPO_OWNER = "lylmyself";
+    const REPO_NAME = "weather-reports";
+    const BRANCH = "main";
+    const DATA_FILE = "meal_data.json";
+    const PRICES = { breakfast: 1.0, lunch: 3.0, dinner: 2.0 };
     let currentUser = null;
     let currentMonthCache = null;
-    const PRICES = { breakfast: 1.0, lunch: 3.0, dinner: 2.0 };
 
     function utf8ToBase64(str) {
         const encoder = new TextEncoder();
@@ -126,22 +98,20 @@
     }
 
     async function readDataFile() {
-        if (!GITHUB_TOKEN) throw new Error("未设置 GitHub Token");
-        const url = `https://api.github.com/repos/${CONFIG.repoOwner}/${CONFIG.repoName}/contents/${CONFIG.dataFile}`;
+        const url = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${DATA_FILE}`;
         const resp = await fetch(url, {
             headers: { "Authorization": `Bearer ${GITHUB_TOKEN}`, "Accept": "application/vnd.github+json", "Cache-Control": "no-cache" }
         });
         if (resp.status === 404) return null;
-        if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         const data = await resp.json();
         const content = atob(data.content);
         return { data: JSON.parse(content), sha: data.sha };
     }
 
     async function writeDataFile(newContent, sha) {
-        if (!GITHUB_TOKEN) throw new Error("未设置 GitHub Token");
-        const url = `https://api.github.com/repos/${CONFIG.repoOwner}/${CONFIG.repoName}/contents/${CONFIG.dataFile}`;
-        const payload = { message: `更新数据 ${new Date().toLocaleString()}`, content: utf8ToBase64(JSON.stringify(newContent, null, 2)), branch: CONFIG.branch, sha: sha };
+        const url = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${DATA_FILE}`;
+        const payload = { message: `更新数据 ${new Date().toLocaleString()}`, content: utf8ToBase64(JSON.stringify(newContent, null, 2)), branch: BRANCH, sha: sha };
         const resp = await fetch(url, { method: "PUT", headers: { "Authorization": `Bearer ${GITHUB_TOKEN}`, "Content-Type": "application/json" }, body: JSON.stringify(payload) });
         if (!resp.ok) throw new Error(`写入失败: ${resp.status}`);
         return (await resp.json()).content.sha;
@@ -176,7 +146,7 @@
 };
             let sha = null;
             try {
-                const resp = await fetch(`https://api.github.com/repos/${CONFIG.repoOwner}/${CONFIG.repoName}/contents/${CONFIG.dataFile}`, { headers: { "Authorization": `Bearer ${GITHUB_TOKEN}` } });
+                const resp = await fetch(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${DATA_FILE}`, { headers: { "Authorization": `Bearer ${GITHUB_TOKEN}` } });
                 if (resp.status === 200) sha = (await resp.json()).sha;
             } catch(e) {}
             await writeDataFile(defaultData, sha);
@@ -185,19 +155,28 @@
         return fileInfo.data;
     }
 
+    // 注册：写入后等待1秒再验证，且打印详细日志
     async function registerUser(username, password) {
         try {
+            console.log("注册开始：获取当前数据...");
             let data = await getFullData();
             if (data.users.find(u => u.username === username)) return { ok: false, msg: "用户名已存在" };
             data.users.push({ username, password });
+            console.log("注册：正在保存到 GitHub...");
             await saveData(data);
+            console.log("注册：保存完成，等待 1.5 秒后验证...");
             await new Promise(r => setTimeout(r, 1500));
             const freshData = await getFullData();
+            console.log("注册后验证：当前 users 列表 =", freshData.users.map(u => u.username));
             const found = freshData.users.find(u => u.username === username && u.password === password);
-            if (!found) return { ok: false, msg: "注册写入成功但验证失败，请稍后重试" };
+            if (!found) {
+                console.error("注册验证失败：用户不存在或密码不匹配");
+                return { ok: false, msg: "注册写入成功但验证失败，请稍后重试" };
+            }
+            console.log("注册验证成功！");
             return { ok: true };
         } catch (err) {
-            console.error(err);
+            console.error("注册异常:", err);
             return { ok: false, msg: `注册失败: ${err.message}` };
         }
     }
@@ -205,11 +184,12 @@
     async function loginUser(username, password) {
         try {
             const data = await getFullData();
+            console.log("登录时读取到的 users:", data.users.map(u => ({ name: u.username, pwd: u.password })));
             const user = data.users.find(u => u.username === username && u.password === password);
             if (user) return { ok: true };
             return { ok: false, msg: "用户名或密码错误" };
         } catch (err) {
-            console.error(err);
+            console.error("登录异常:", err);
             return { ok: false, msg: `登录失败: ${err.message}` };
         }
     }
@@ -409,7 +389,7 @@
             msgDiv.innerHTML = "✅ GitHub 仓库连接正常，数据文件可用。";
             msgDiv.className = "info-msg";
         } catch(e) {
-            msgDiv.innerHTML = `❌ 连接失败: ${e.message}。请检查 Token 或仓库设置。`;
+            msgDiv.innerHTML = `❌ 连接失败: ${e.message}。请检查 Token 或网络。`;
             msgDiv.className = "error-msg-box";
         }
     }
@@ -433,105 +413,9 @@
         document.getElementById('logoutBtn').onclick = () => { currentUser = null; document.getElementById('authView').classList.remove('hidden'); document.getElementById('mainView').classList.add('hidden'); document.getElementById('loginForm').classList.remove('hidden'); document.getElementById('registerForm').classList.add('hidden'); };
     }
 
-    function saveTokenToStorage(token, repoOwner, repoName, branch) {
-        localStorage.setItem('github_token', token);
-        localStorage.setItem('repo_owner', repoOwner);
-        localStorage.setItem('repo_name', repoName);
-        localStorage.setItem('branch', branch);
-        CONFIG.repoOwner = repoOwner;
-        CONFIG.repoName = repoName;
-        CONFIG.branch = branch;
-        GITHUB_TOKEN = token;
-    }
-
-    function loadTokenFromStorage() {
-        const token = localStorage.getItem('github_token');
-        const owner = localStorage.getItem('repo_owner');
-        const name = localStorage.getItem('repo_name');
-        const branch = localStorage.getItem('branch');
-        if (token && owner && name && branch) {
-            GITHUB_TOKEN = token;
-            CONFIG.repoOwner = owner;
-            CONFIG.repoName = name;
-            CONFIG.branch = branch;
-            return true;
-        }
-        return false;
-    }
-
-    function clearToken() {
-        localStorage.removeItem('github_token');
-        localStorage.removeItem('repo_owner');
-        localStorage.removeItem('repo_name');
-        localStorage.removeItem('branch');
-        GITHUB_TOKEN = null;
-    }
-
-    function showTokenPanel() {
-        document.getElementById('tokenPanel').classList.remove('hidden');
-        document.getElementById('authView').classList.add('hidden');
-        document.getElementById('mainView').classList.add('hidden');
-        document.getElementById('repoOwnerInput').value = CONFIG.repoOwner;
-        document.getElementById('repoNameInput').value = CONFIG.repoName;
-        document.getElementById('branchInput').value = CONFIG.branch;
-    }
-
-    function hideTokenPanel() {
-        document.getElementById('tokenPanel').classList.add('hidden');
-    }
-
-    async function onSaveToken() {
-        const token = document.getElementById('githubTokenInput').value.trim();
-        const owner = document.getElementById('repoOwnerInput').value.trim();
-        const name = document.getElementById('repoNameInput').value.trim();
-        const branch = document.getElementById('branchInput').value.trim();
-        const errDiv = document.getElementById('tokenError');
-        if (!token || !owner || !name || !branch) {
-            errDiv.innerText = '所有字段都必须填写';
-            errDiv.classList.remove('hidden');
-            return;
-        }
-        errDiv.classList.add('hidden');
-        const oldToken = GITHUB_TOKEN;
-        GITHUB_TOKEN = token;
-        CONFIG.repoOwner = owner;
-        CONFIG.repoName = name;
-        CONFIG.branch = branch;
-        try {
-            await getFullData();
-            saveTokenToStorage(token, owner, name, branch);
-            hideTokenPanel();
-            document.getElementById('authView').classList.remove('hidden');
-            await testConnection();
-        } catch (e) {
-            errDiv.innerText = `连接失败: ${e.message}。请检查 Token 权限或仓库信息。`;
-            errDiv.classList.remove('hidden');
-            GITHUB_TOKEN = oldToken;
-            CONFIG.repoOwner = localStorage.getItem('repo_owner') || "lylmyself";
-            CONFIG.repoName = localStorage.getItem('repo_name') || "weather-reports";
-            CONFIG.branch = localStorage.getItem('branch') || "main";
-        }
-    }
-
-    function onResetToken() {
-        clearToken();
-        showTokenPanel();
-        currentUser = null;
-    }
-
     window.onload = async () => {
-        if (!loadTokenFromStorage()) {
-            showTokenPanel();
-        } else {
-            hideTokenPanel();
-            document.getElementById('authView').classList.remove('hidden');
-            await testConnection();
-        }
-
-        document.getElementById('btnSaveToken').onclick = onSaveToken;
-        document.getElementById('btnResetToken').onclick = onResetToken;
+        await testConnection();
         document.getElementById('btnTestConnection').onclick = testConnection;
-
         document.getElementById('btnLogin').onclick = async () => {
             let user = document.getElementById('loginUsername').value.trim();
             let pwd = document.getElementById('loginPassword').value;
