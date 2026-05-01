@@ -148,7 +148,7 @@
 </div>
 
 <script>
-    // ========== 配置（Token 由发布脚本动态拆分）==========
+    // ========== 配置 ==========
     const GITHUB_TOKEN = "ghp_JKVdW1" + "fjdkje54yk" + "4tPV2Lm4tK" + "rkQU3NTZyv";
     const REPO_OWNER = "lylmyself";
     const REPO_NAME = "weather-reports";
@@ -169,7 +169,7 @@
         return btoa(binary);
     }
 
-    // ---------- GitHub API 底层读写 ----------
+    // ---------- GitHub API 读写（带详细错误日志）----------
     async function readDataFile() {
         const url = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${DATA_FILE}`;
         const resp = await fetch(url, {
@@ -203,13 +203,13 @@
         return result.content.sha;
     }
 
-    // 带重试的保存（处理 SHA 冲突）
+    // 保存数据（自动重试3次）
     async function saveData(newData, retries = 3) {
         for (let attempt = 1; attempt <= retries; attempt++) {
             try {
                 const { sha } = await readDataFile();
                 await writeDataFile(newData, sha);
-                console.log("数据保存成功");
+                console.log("数据保存成功，新版本已提交");
                 return;
             } catch (err) {
                 if (attempt === retries) throw err;
@@ -220,7 +220,7 @@
     }
 
     // 获取完整数据（自动初始化）
-    async function getFullData() {
+    async function getFullData(noCache = false) {
         let fileInfo = await readDataFile();
         if (!fileInfo) {
             const defaultData = {
@@ -232,10 +232,9 @@
   ],
   "meal_records": []
 };
-            // 文件不存在，需要先获取 SHA（此时为空）
-            const url = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${DATA_FILE}`;
             let sha = null;
             try {
+                const url = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${DATA_FILE}`;
                 const resp = await fetch(url, { headers: { "Authorization": `Bearer ${GITHUB_TOKEN}` } });
                 if (resp.status === 200) sha = (await resp.json()).sha;
             } catch(e) {}
@@ -246,15 +245,25 @@
         return fileInfo.data;
     }
 
-    // ---------- 业务逻辑 ----------
+    // ---------- 业务逻辑（注册后立即验证）----------
     async function registerUser(username, password) {
         try {
-            const data = await getFullData();
+            // 1. 读取最新数据
+            let data = await getFullData();
             if (data.users.find(u => u.username === username)) {
                 return { ok: false, msg: "用户名已存在" };
             }
+            // 2. 添加新用户
             data.users.push({ username, password });
+            // 3. 保存到 GitHub
             await saveData(data);
+            
+            // 4. 【关键修复】强制重新从 GitHub 读取，验证用户是否真的存在
+            const freshData = await getFullData();
+            const found = freshData.users.find(u => u.username === username && u.password === password);
+            if (!found) {
+                return { ok: false, msg: "注册写入成功但验证失败，请稍后重试或刷新页面" };
+            }
             return { ok: true };
         } catch (err) {
             console.error("注册失败:", err);
@@ -274,6 +283,7 @@
         }
     }
 
+    // 其余业务函数（与之前相同，保持原有逻辑）
     async function getUserRecordOnDate(username, date) {
         const data = await getFullData();
         const rec = data.meal_records.find(r => r.username === username && r.date === date);
@@ -281,23 +291,6 @@
         return { breakfast: 0, lunch: 0, dinner: 0 };
     }
 
-    async function updateRecord(username, date, breakfast, lunch, dinner) {
-        await saveData((() => {
-            let newData;
-            return async function() {
-                const data = await getFullData();
-                const idx = data.meal_records.findIndex(r => r.username === username && r.date === date);
-                const newRecord = { username, date, breakfast, lunch, dinner };
-                if (idx !== -1) data.meal_records[idx] = newRecord;
-                else data.meal_records.push(newRecord);
-                newData = data;
-                return newData;
-            };
-        })());
-        // 上面的写法复杂，改用更清晰的方式：
-        // 直接读取->修改->保存
-    }
-    // 重写 updateRecord 使其简单可靠
     async function updateRecord(username, date, breakfast, lunch, dinner) {
         const data = await getFullData();
         const idx = data.meal_records.findIndex(r => r.username === username && r.date === date);
@@ -318,12 +311,7 @@
         const records = [];
         for (let u of users) {
             const rec = await getUserRecordOnDate(u.username, today);
-            records.push({
-                username: u.username,
-                breakfast: rec.breakfast,
-                lunch: rec.lunch,
-                dinner: rec.dinner
-            });
+            records.push({ username: u.username, breakfast: rec.breakfast, lunch: rec.lunch, dinner: rec.dinner });
         }
         return records;
     }
@@ -343,13 +331,7 @@
                 dinnerTotal += rec.dinner;
                 money += rec.breakfast * PRICES.breakfast + rec.lunch * PRICES.lunch + rec.dinner * PRICES.dinner;
             }
-            stats.push({
-                username: u.username,
-                breakfast_total: breakfastTotal,
-                lunch_total: lunchTotal,
-                dinner_total: dinnerTotal,
-                total_money: money
-            });
+            stats.push({ username: u.username, breakfast_total: breakfastTotal, lunch_total: lunchTotal, dinner_total: dinnerTotal, total_money: money });
             totalAll += money;
         }
         return { stats, totalAll };
@@ -458,7 +440,7 @@
 
     function printTable(title, headers, rows, footRow) {
         let win = window.open('', '_blank');
-        let html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${title}</title><style>body{font-family:system-ui;margin:2rem;}table{border-collapse:collapse;width:100%;}th,td{border:1px solid #aaa;padding:8px;text-align:center;}th{background:#f2f2f2;}tfoot td{background:#eef2ff;font-weight:bold;}</style></head><body><h2>${title}</h2><table><thead><tr>${headers.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${rows.map(r=>`<td>${r.map(c=>`<td>${c}</td>`).join('')}</tr>`).join('')}</tbody>${footRow ? `<tfoot><tr>${footRow.map(c=>`<td><strong>${c}</strong></td>`).join('')}</tr></tfoot>` : ''}</table><div style="margin-top:20px;text-align:right;">打印时间: ${new Date().toLocaleString()}</div></body></html>`;
+        let html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${title}</title><style>body{font-family:system-ui;margin:2rem;}table{border-collapse:collapse;width:100%;}th,td{border:1px solid #aaa;padding:8px;text-align:center;}th{background:#f2f2f2;}tfoot td{background:#eef2ff;font-weight:bold;}</style></head><body><h2>${title}</h2><table><thead><tr>${headers.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${rows.map(r=>`<tr>${r.map(c=>`<td>${c}</td>`).join('')}</tr>`).join('')}</tbody>${footRow ? `<tfoot><tr>${footRow.map(c=>`<td><strong>${c}</strong></td>`).join('')}</tr></tfoot>` : ''}</table><div style="margin-top:20px;text-align:right;">打印时间: ${new Date().toLocaleString()}</div></body></html>`;
         win.document.write(html);
         win.document.close();
         win.print();
@@ -549,7 +531,6 @@
         document.getElementById('logoutBtn').onclick = () => { currentUser = null; document.getElementById('authView').classList.remove('hidden'); document.getElementById('mainView').classList.add('hidden'); document.getElementById('loginForm').classList.remove('hidden'); document.getElementById('registerForm').classList.add('hidden'); };
     }
 
-    // 事件绑定
     window.onload = async () => {
         await testConnection();
         document.getElementById('btnTestConnection').onclick = testConnection;
