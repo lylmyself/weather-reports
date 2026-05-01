@@ -7,32 +7,52 @@
         *{margin:0;padding:0;box-sizing:border-box;font-family:system-ui,'Segoe UI',Roboto,sans-serif}
         body{background:#eef2f7;padding:20px}
         .app-container{max-width:1400px;margin:0 auto;background:#fff;border-radius:28px;box-shadow:0 20px 35px -12px rgba(0,0,0,0.15);padding:24px 28px 32px}
-        .auth-panel{max-width:440px;margin:60px auto;background:#fff;border-radius:36px;padding:36px 32px;box-shadow:0 20px 35px -10px rgba(0,0,0,0.2);text-align:center}
+        .auth-panel{max-width:480px;margin:60px auto;background:#fff;border-radius:36px;padding:36px 32px;box-shadow:0 20px 35px -10px rgba(0,0,0,0.2);text-align:center}
         .form-group{margin-bottom:20px;text-align:left}
-        .form-group input{width:100%;padding:12px 16px;border:1px solid #cbd5e1;border-radius:28px}
-        button{background:#3b82f6;color:#fff;border:none;padding:10px 24px;border-radius:40px;font-weight:600;cursor:pointer;margin:4px 6px}
+        .form-group input{width:100%;padding:12px 16px;border:1px solid #cbd5e1;border-radius:28px;font-size:16px}
+        .checkbox-group{display:flex;align-items:center;gap:12px;margin:15px 0;justify-content:center}
+        .checkbox-group input{width:20px;height:20px;margin:0;cursor:pointer}
+        .checkbox-group label{font-size:16px;cursor:pointer;margin:0}
+        button{background:#3b82f6;color:#fff;border:none;padding:10px 24px;border-radius:40px;font-weight:600;cursor:pointer;font-size:14px;margin:4px 6px}
+        button:hover{background:#2563eb}
         .btn-outline{background:#fff;color:#3b82f6;border:1px solid #3b82f6}
+        .btn-outline:hover{background:#eff6ff}
         .btn-danger{background:#ef4444}
-        .btn-sm{padding:6px 16px}
+        .btn-danger:hover{background:#dc2626}
+        .btn-sm{padding:6px 16px;font-size:13px}
         .btn-success{background:#10b981}
+        .btn-success:hover{background:#059669}
+        .main-header{display:flex;justify-content:space-between;align-items:baseline;border-bottom:2px solid #e2e8f0;padding-bottom:14px;margin-bottom:24px;flex-wrap:wrap;gap:12px}
+        .user-greeting{font-weight:600;background:#eef2ff;padding:6px 18px;border-radius:40px;font-size:14px}
+        .stats-card{background:#f8fafc;border-radius:24px;padding:16px 24px;margin-bottom:28px;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:16px}
+        .tabs{display:flex;gap:4px;border-bottom:2px solid #e2e8f0;margin-bottom:20px}
+        .tab-btn{background:none;border:none;padding:12px 24px;font-size:16px;font-weight:600;color:#64748b;cursor:pointer;border-radius:8px 8px 0 0;transition:all 0.2s}
+        .tab-btn.active{color:#3b82f6;background:#eff6ff;border-bottom:2px solid #3b82f6;margin-bottom:-2px}
+        .tab-pane{display:none}
+        .tab-pane.active{display:block}
+        .section-title{font-size:1.2rem;font-weight:700;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
+        .toolbar{display:flex;gap:10px;flex-wrap:wrap}
+        .table-wrapper{overflow-x:auto;border-radius:20px;border:1px solid #e2e8f0;background:#fff;max-height:500px;overflow-y:auto}
+        table{width:100%;border-collapse:collapse;font-size:14px}
+        th{background:#f1f5f9;padding:12px 10px;position:sticky;top:0;border-bottom:1px solid #cbd5e1}
+        td,th{padding:10px 8px;text-align:center;border-bottom:1px solid #eef2ff}
+        tfoot td{background:#eef2ff;font-weight:bold;border-top:2px solid #cbd5e1}
+        tr:hover{background:#fefce8}
+        .modal-mask{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;z-index:1000}
+        .modal-container{background:#fff;width:90%;max-width:500px;border-radius:36px;overflow:hidden}
+        .modal-header{padding:18px 24px;background:#f8fafc;border-bottom:1px solid #e2e8f0;font-weight:700;font-size:1.2rem;display:flex;justify-content:space-between}
+        .modal-body{padding:20px}
+        .meal-spin-group{display:flex;gap:20px;flex-wrap:wrap;margin-top:10px;justify-content:center}
+        .spin-item{background:#f1f5f9;padding:8px 15px;border-radius:40px;display:flex;align-items:center;gap:10px}
+        .spin-input{width:80px;padding:8px;border-radius:28px;border:1px solid #cbd5e1;text-align:center;font-size:16px}
+        .modal-footer{padding:16px 24px;border-top:1px solid #e2e8f0;display:flex;justify-content:flex-end;gap:12px}
+        .error-msg{color:#b91c1c;background:#fee2e2;border-radius:40px;padding:8px 16px;margin-top:12px;font-size:13px}
         .hidden{display:none}
-        .error-msg{color:#b91c1c;background:#fee2e2;border-radius:40px;padding:8px 16px;margin-top:12px}
-        .info-msg{background:#e6f7e6;border-left:4px solid #10b981;padding:10px;margin-bottom:20px}
-        .error-msg-box{background:#fee2e2;border-left:4px solid #dc2626;padding:10px;margin-bottom:20px}
-        .table-wrapper{overflow-x:auto;border:1px solid #e2e8f0;border-radius:20px}
-        table{width:100%;border-collapse:collapse}
-        th,td{padding:10px 8px;text-align:center;border-bottom:1px solid #eef2ff}
-        .main-header{display:flex;justify-content:space-between;margin-bottom:24px;align-items:center}
-        .stats-card{background:#f8fafc;border-radius:24px;padding:16px 24px;margin-bottom:28px;display:flex;gap:16px;align-items:center;flex-wrap:wrap}
-        .section{margin-top:32px}
-        .section-title{font-size:1.3rem;font-weight:700;margin-bottom:14px;display:flex;justify-content:space-between;flex-wrap:wrap}
-        .modal-mask{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:1000}
-        .modal-container{background:#fff;width:90%;max-width:500px;border-radius:36px}
-        .modal-header{padding:18px 24px;border-bottom:1px solid #e2e8f0;font-weight:700;display:flex;justify-content:space-between}
-        .modal-body{padding:16px 20px}
-        .modal-footer{padding:16px 24px;border-top:1px solid #e2e8f0;display:flex;justify-content:flex-end}
         footer{text-align:center;font-size:12px;color:#94a3b8;margin-top:30px}
-        .data-tools{display:flex;gap:12px;justify-content:center;margin-top:16px}
+        .info-msg{background:#e6f7e6;border-left:4px solid #10b981;padding:10px;margin-bottom:20px;font-size:13px;text-align:left}
+        .error-msg-box{background:#fee2e2;border-left:4px solid #dc2626;padding:10px;margin-bottom:20px}
+        .data-tools{display:flex;gap:12px;justify-content:center;margin-top:20px;flex-wrap:wrap}
+        @media(max-width:700px){.app-container{padding:18px}.stats-card{flex-direction:column;align-items:stretch}}
     </style>
 </head>
 <body>
@@ -41,17 +61,20 @@
         <h2>🍜 单位订餐系统</h2>
         <div id="diagnosticMsg" class="info-msg">📦 数据存储于浏览器本地，多设备数据不互通。可导出/导入备份。</div>
         <div id="loginForm">
-            <div class="form-group"><label>用户名</label><input type="text" id="loginUsername"></div>
-            <div class="form-group"><label>密码</label><input type="password" id="loginPassword"></div>
-            <div class="form-group"><input type="checkbox" id="rememberCheckbox"> <label>记住密码</label></div>
+            <div class="form-group"><label>用户名</label><input type="text" id="loginUsername" placeholder="请输入用户名"></div>
+            <div class="form-group"><label>密码</label><input type="password" id="loginPassword" placeholder="密码"></div>
+            <div class="checkbox-group">
+                <input type="checkbox" id="rememberCheckbox">
+                <label for="rememberCheckbox">记住密码</label>
+            </div>
             <button id="btnLogin">登录</button>
             <button id="btnShowRegister" class="btn-outline">注册新账号</button>
             <div id="loginError" class="error-msg hidden"></div>
         </div>
         <div id="registerForm" class="hidden">
-            <div class="form-group"><label>用户名</label><input type="text" id="regUsername"></div>
-            <div class="form-group"><label>密码</label><input type="password" id="regPassword"></div>
-            <div class="form-group"><label>确认密码</label><input type="password" id="regConfirmPwd"></div>
+            <div class="form-group"><label>用户名</label><input type="text" id="regUsername" placeholder="用户名"></div>
+            <div class="form-group"><label>密码</label><input type="password" id="regPassword" placeholder="密码"></div>
+            <div class="form-group"><label>确认密码</label><input type="password" id="regConfirmPwd" placeholder="再次输入密码"></div>
             <button id="btnRegister">注册</button>
             <button id="btnBackLogin" class="btn-outline">返回登录</button>
             <div id="regError" class="error-msg hidden"></div>
@@ -64,21 +87,63 @@
     </div>
 
     <div id="mainView" class="app-container hidden">
-        <div class="main-header"><span id="welcomeUser"></span><button id="logoutBtn" class="btn-danger btn-sm">退出</button></div>
+        <div class="main-header">
+            <span class="user-greeting" id="welcomeUser">👋 用户</span>
+            <button id="logoutBtn" class="btn-danger btn-sm">退出登录</button>
+        </div>
         <div class="stats-card">
-            <input type="month" id="monthPicker">
-            <button id="refreshMonthBtn">刷新月报</button>
-            <span id="monthTotalAmount"></span>
-            <button id="editTodayBtn" class="btn-success">✏️ 修改今日订餐</button>
+            <div style="display:flex;gap:12px;align-items:center;">
+                <span>📅 统计月份：</span>
+                <input type="month" id="monthPicker" style="padding:6px 12px;border-radius:40px;border:1px solid #cbd5e1;">
+                <button id="refreshMonthBtn" class="btn-sm">刷新</button>
+            </div>
+            <div id="monthTotalAmount" style="font-weight:700;background:#dbeafe;padding:6px 20px;border-radius:40px;">本月本人总消费: ¥0.00</div>
+            <button id="editTodayBtn" class="btn-success btn-sm">✏️ 修改今日订餐</button>
         </div>
-        <div class="section">
-            <div class="section-title">📋 今日订餐 <span id="todayDateLabel"></span><div><button id="refreshTodayBtn">刷新</button><button id="printTodayBtn">打印</button><button id="exportTodayBtn">导出CSV</button></div></div>
-            <div class="table-wrapper"><table><thead><tr><th>姓名</th><th>早餐</th><th>午餐</th><th>晚餐</th><th>合计(元)</th></tr></thead><tbody id="todayTableBody"><tr><td colspan="5">加载中...</td></tr></tbody><tfoot id="todayTableFoot"></tfoot></div>
+
+        <!-- 选项卡 -->
+        <div class="tabs">
+            <button class="tab-btn active" data-tab="today">📋 今日订餐</button>
+            <button class="tab-btn" data-tab="month">📊 月度统计</button>
         </div>
-        <div class="section">
-            <div class="section-title">📊 月度统计<div><button id="printMonthBtn">打印月报</button><button id="exportMonthBtn">导出CSV</button></div></div>
-            <div class="table-wrapper"><table><thead><tr><th>姓名</th><th>早餐总份</th><th>午餐总份</th><th>晚餐总份</th><th>月消费(元)</th></tr></thead><tbody id="monthTableBody"><tr><td colspan="5">请选择月份</td></tr></tbody><tfoot id="monthTableFoot"></tfoot></div>
+
+        <!-- 今日订餐面板 -->
+        <div id="tab-today" class="tab-pane active">
+            <div class="section-title">
+                <span>今日日期：<span id="todayDateLabel"></span></span>
+                <div class="toolbar">
+                    <button id="refreshTodayBtn" class="btn-sm">刷新</button>
+                    <button id="printTodayBtn" class="btn-sm">打印</button>
+                    <button id="exportTodayBtn" class="btn-sm">导出CSV</button>
+                </div>
+            </div>
+            <div class="table-wrapper">
+                <table>
+                    <thead><tr><th>姓名</th><th>早餐</th><th>午餐</th><th>晚餐</th><th>合计(元)</th></tr></thead>
+                    <tbody id="todayTableBody"><tr><td colspan="5">加载中...</td></tr></tbody>
+                    <tfoot id="todayTableFoot"></tfoot>
+                </table>
+            </div>
         </div>
+
+        <!-- 月度统计面板 -->
+        <div id="tab-month" class="tab-pane">
+            <div class="section-title">
+                <span>月度统计报表</span>
+                <div class="toolbar">
+                    <button id="printMonthBtn" class="btn-sm">打印月报</button>
+                    <button id="exportMonthBtn" class="btn-sm">导出CSV</button>
+                </div>
+            </div>
+            <div class="table-wrapper">
+                <table>
+                    <thead><tr><th>姓名</th><th>早餐总份</th><th>午餐总份</th><th>晚餐总份</th><th>月消费(元)</th></tr></thead>
+                    <tbody id="monthTableBody"><tr><td colspan="5">请选择月份</td></tr></tbody>
+                    <tfoot id="monthTableFoot"></tfoot>
+                </table>
+            </div>
+        </div>
+
         <footer>⚡ 所有数据仅保存在当前浏览器中，更换设备或清除缓存将丢失。请定期导出备份。</footer>
     </div>
 </div>
@@ -124,7 +189,6 @@
         return loadData();
     }
 
-    // 注册
     async function registerUser(username, password) {
         let { users, records } = loadData();
         if (users.find(u => u.username === username)) return { ok: false, msg: "用户名已存在" };
@@ -133,7 +197,6 @@
         return { ok: true };
     }
 
-    // 登录
     async function loginUser(username, password) {
         let { users } = loadData();
         const user = users.find(u => u.username === username && u.password === password);
@@ -141,7 +204,6 @@
         return { ok: false, msg: "用户名或密码错误" };
     }
 
-    // 获取某用户某天的记录
     async function getUserRecordOnDate(username, date) {
         let { records } = loadData();
         const rec = records.find(r => r.username === username && r.date === date);
@@ -149,7 +211,6 @@
         return { breakfast: 0, lunch: 0, dinner: 0 };
     }
 
-    // 更新记录
     async function updateRecord(username, date, breakfast, lunch, dinner) {
         let { records } = loadData();
         const idx = records.findIndex(r => r.username === username && r.date === date);
@@ -159,13 +220,11 @@
         saveRecords(records);
     }
 
-    // 获取所有用户
     async function getAllUsers() {
         let { users } = loadData();
         return users.map(u => ({ username: u.username }));
     }
 
-    // 获取今日所有记录
     async function getAllTodayRecords() {
         const today = getTodayStr();
         const users = await getAllUsers();
@@ -177,7 +236,6 @@
         return records;
     }
 
-    // 月度统计
     async function getMonthStats(yearMonth) {
         let { users, records } = loadData();
         const monthRecords = records.filter(r => r.date.startsWith(yearMonth));
@@ -202,9 +260,9 @@
         return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
     }
 
-    // ---------- UI 渲染 ----------
     function escapeHtml(str) { return String(str).replace(/[&<>]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[m])); }
 
+    // ---------- 渲染 ----------
     async function renderToday() {
         let records = await getAllTodayRecords();
         const tbody = document.getElementById('todayTableBody');
@@ -251,14 +309,22 @@
             modal.className = 'modal-mask';
             modal.innerHTML = `
                 <div class="modal-container">
-                    <div class="modal-header"><span>📝 编辑今日订餐 (${today}) - ${escapeHtml(currentUser)}</span><button id="closeModalBtn" style="background:transparent;font-size:24px">&times;</button></div>
-                    <div class="modal-body">
-                        <div>🥐 早餐 <input type="number" min="0" max="10" id="editBreakfast" value="${rec.breakfast}"></div>
-                        <div>🍱 午餐 <input type="number" min="0" max="10" id="editLunch" value="${rec.lunch}"></div>
-                        <div>🍝 晚餐 <input type="number" min="0" max="10" id="editDinner" value="${rec.dinner}"></div>
-                        <div style="margin-top:12px;">💡 价格：早餐¥1，午餐¥3，晚餐¥2</div>
+                    <div class="modal-header">
+                        <span>📝 编辑今日订餐 (${today}) - ${escapeHtml(currentUser)}</span>
+                        <button id="closeModalBtn" style="background:transparent;font-size:24px;padding:0;">&times;</button>
                     </div>
-                    <div class="modal-footer"><button id="cancelModalBtn" class="btn-outline">取消</button><button id="saveMealBtn" class="btn-success">保存</button></div>
+                    <div class="modal-body">
+                        <div class="meal-spin-group">
+                            <div class="spin-item">🥐 早餐 <input type="number" min="0" max="10" id="editBreakfast" class="spin-input" value="${rec.breakfast}"></div>
+                            <div class="spin-item">🍱 午餐 <input type="number" min="0" max="10" id="editLunch" class="spin-input" value="${rec.lunch}"></div>
+                            <div class="spin-item">🍝 晚餐 <input type="number" min="0" max="10" id="editDinner" class="spin-input" value="${rec.dinner}"></div>
+                        </div>
+                        <div style="margin-top:16px;text-align:center;color:#475569;">💡 价格：早餐¥1，午餐¥3，晚餐¥2</div>
+                    </div>
+                    <div class="modal-footer">
+                        <button id="cancelModalBtn" class="btn-outline">取消</button>
+                        <button id="saveMealBtn" class="btn-success">保存</button>
+                    </div>
                 </div>
             `;
             document.body.appendChild(modal);
@@ -277,13 +343,14 @@
                 if (document.getElementById('monthPicker').value && today.startsWith(document.getElementById('monthPicker').value))
                     await renderMonth(document.getElementById('monthPicker').value);
             };
+            modal.onclick = (e) => { if (e.target === modal) closeModal(); };
         });
     }
 
     // 打印与导出
     function printTable(title, headers, rows, footRow) {
         let win = window.open('', '_blank');
-        let html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${title}</title><style>body{font-family:system-ui;margin:2rem;}table{border-collapse:collapse;width:100%;}th,td{border:1px solid #aaa;padding:8px;text-align:center;}th{background:#f2f2f2;}</style></head><body><h2>${title}</h2><table><thead><tr>${headers.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${rows.map(r=>`<tr>${r.map(c=>`<td>${c}</td>`).join('')}</tr>`).join('')}</tbody>${footRow ? `<tfoot><tr>${footRow.map(c=>`<td><strong>${c}</strong></td>`).join('')}</tr></tfoot>` : ''}</table><div style="margin-top:20px;">打印时间: ${new Date().toLocaleString()}</div></body></html>`;
+        let html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${title}</title><style>body{font-family:system-ui;margin:2rem;}table{border-collapse:collapse;width:100%;}th,td{border:1px solid #aaa;padding:8px;text-align:center;}th{background:#f2f2f2;}tfoot td{background:#eef2ff;font-weight:bold;}</style></head><body><h2>${title}</h2><table><thead><tr>${headers.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${rows.map(r=>`<tr>${r.map(c=>`<td>${c}</td>`).join('')}</tr>`).join('')}</tbody>${footRow ? `<tfoot><tr>${footRow.map(c=>`<td><strong>${c}</strong></td>`).join('')}</tr></tfoot>` : ''}</table><div style="margin-top:20px;text-align:right;">打印时间: ${new Date().toLocaleString()}</div></body></html>`;
         win.document.write(html);
         win.document.close();
         win.print();
@@ -332,7 +399,7 @@
         exportCSV(`订餐月报_${document.getElementById('monthPicker').value}`, ['姓名','早餐总份','午餐总份','晚餐总份','月消费(元)'], rows, ['总计', sumB, sumL, sumD, sumM], `订餐月报_${document.getElementById('monthPicker').value}.csv`);
     }
 
-    // ---------- 数据导入导出 ----------
+    // 数据备份
     function exportBackup() {
         const users = localStorage.getItem('meal_users');
         const records = localStorage.getItem('meal_records');
@@ -367,7 +434,23 @@
         reader.readAsText(file);
     }
 
-    // ---------- 主流程 ----------
+    // 选项卡切换
+    function initTabs() {
+        const tabs = document.querySelectorAll('.tab-btn');
+        tabs.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const tabId = btn.getAttribute('data-tab');
+                document.querySelectorAll('.tab-pane').forEach(pane => pane.classList.remove('active'));
+                tabs.forEach(b => b.classList.remove('active'));
+                document.getElementById(`tab-${tabId}`).classList.add('active');
+                btn.classList.add('active');
+                if (tabId === 'month' && document.getElementById('monthPicker').value) {
+                    renderMonth(document.getElementById('monthPicker').value);
+                }
+            });
+        });
+    }
+
     async function initMain() {
         document.getElementById('authView').classList.add('hidden');
         document.getElementById('mainView').classList.remove('hidden');
@@ -377,6 +460,8 @@
         document.getElementById('monthPicker').value = defaultMonth;
         await renderToday();
         await renderMonth(defaultMonth);
+        initTabs();
+        // 绑定按钮
         document.getElementById('refreshTodayBtn').onclick = () => renderToday();
         document.getElementById('printTodayBtn').onclick = handlePrintToday;
         document.getElementById('exportTodayBtn').onclick = handleExportToday;
@@ -388,6 +473,7 @@
     }
 
     window.onload = () => {
+        // 登录事件
         document.getElementById('btnLogin').onclick = async () => {
             let user = document.getElementById('loginUsername').value.trim();
             let pwd = document.getElementById('loginPassword').value;
@@ -419,11 +505,15 @@
                 document.getElementById('loginPassword').value = '';
             } else { errDiv.innerText = res.msg; errDiv.classList.remove('hidden'); setTimeout(()=>errDiv.classList.add('hidden'),3000); }
         };
+        // 记住密码填充
         let savedUser = localStorage.getItem('savedUser');
         let savedPwd = localStorage.getItem('savedPwd');
-        if (savedUser && savedPwd) { document.getElementById('loginUsername').value = savedUser; document.getElementById('loginPassword').value = savedPwd; document.getElementById('rememberCheckbox').checked = true; }
-
-        // 数据备份与恢复
+        if (savedUser && savedPwd) {
+            document.getElementById('loginUsername').value = savedUser;
+            document.getElementById('loginPassword').value = savedPwd;
+            document.getElementById('rememberCheckbox').checked = true;
+        }
+        // 数据导入导出
         document.getElementById('exportDataBtn').onclick = exportBackup;
         const importBtn = document.getElementById('importDataBtn');
         const fileInput = document.getElementById('importFileInput');
