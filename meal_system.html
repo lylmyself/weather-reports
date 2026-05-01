@@ -95,11 +95,11 @@
         </div>
         <div class="section">
             <div class="section-title">📋 今日订餐 <span id="todayDateLabel"></span><div><button id="refreshTodayBtn">刷新</button><button id="printTodayBtn">打印</button><button id="exportTodayBtn">导出CSV</button></div></div>
-            <div class="table-wrapper"><table><thead><tr><th>姓名</th><th>早餐</th><th>午餐</th><th>晚餐</th><th>合计(元)</th></tr></thead><tbody id="todayTableBody"><tr><td colspan="5">加载中...</td></tr></tbody><tfoot id="todayTableFoot"></tfoot></table></div>
+            <div class="table-wrapper"><table><thead>运转<th>姓名</th><th>早餐</th><th>午餐</th><th>晚餐</th><th>合计(元)</th></tr></thead><tbody id="todayTableBody"><tr><td colspan="5">加载中...</td></tr></tbody><tfoot id="todayTableFoot"></tfoot></div>
         </div>
         <div class="section">
             <div class="section-title">📊 月度统计<div><button id="printMonthBtn">打印月报</button><button id="exportMonthBtn">导出CSV</button></div></div>
-            <div class="table-wrapper"><table><thead><tr><th>姓名</th><th>早餐总份</th><th>午餐总份</th><th>晚餐总份</th><th>月消费(元)</th></tr></thead><tbody id="monthTableBody"><tr><td colspan="5">请选择月份</td></tr></tbody><tfoot id="monthTableFoot"></tfoot></table></div>
+            <div class="table-wrapper"><table><thead>运转<th>姓名</th><th>早餐总份</th><th>午餐总份</th><th>晚餐总份</th><th>月消费(元)</th></tr></thead><tbody id="monthTableBody"></table><td colspan="5">请选择月份</td></tr></tbody><tfoot id="monthTableFoot"></tfoot></div>
         </div>
         <footer>⚡ 数据存储于您的 GitHub 仓库，所有用户共享。默认账号：应急值班人员 / 123</footer>
     </div>
@@ -291,7 +291,7 @@
 
     async function renderMonth(yearMonth) {
         if (!yearMonth || !/^\d{4}-\d{2}$/.test(yearMonth)) {
-            document.getElementById('monthTableBody').innerHTML = '<tr><td colspan="5">月份格式错误</td></tr>';
+            document.getElementById('monthTableBody').innerHTML = '</td><td colspan="5">月份格式错误</td></tr>';
             return;
         }
         let { stats, totalAll } = await getMonthStats(yearMonth);
