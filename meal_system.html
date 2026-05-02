@@ -7,53 +7,14 @@
     <style>
         *{margin:0;padding:0;box-sizing:border-box;font-family:system-ui,'Segoe UI',Roboto,sans-serif}
         body{background:#eef2f7;padding:20px}
-        
-        /* 登录页面（认证面板）使用默认字体大小 */
-        .auth-panel{
-            max-width:500px;
-            margin:60px auto;
-            background:#fff;
-            border-radius:36px;
-            padding:36px 32px;
-            text-align:center;
-        }
-        
-        /* 主应用容器：登录后整体字体调小 */
-        .app-container{
-            max-width:1400px;
-            margin:0 auto;
-            background:#fff;
-            border-radius:28px;
-            padding:24px 28px 32px;
-            font-size:14px;   /* 主界面基础字体 14px */
-        }
-        
-        /* 确保所有子元素继承主容器字体，同时内部可以再微调 */
-        .app-container * {
-            font-size:inherit;
-        }
-        
-        /* 特殊元素可以稍微调整 (可选) */
-        .app-container button,
-        .app-container input,
-        .app-container select,
-        .app-container .tab-btn,
-        .app-container th,
-        .app-container td {
-            font-size:14px;
-        }
-        
-        /* 保留小按钮样式微调 */
-        .app-container .btn-sm {
-            font-size:12px;
-        }
-        
-        /* 以下保持原始样式，但继承自 .app-container 会自动变小 */
+        .app-container{max-width:1400px;margin:0 auto;background:#fff;border-radius:28px;padding:24px 28px 32px}
+        .auth-panel{max-width:500px;margin:60px auto;background:#fff;border-radius:36px;padding:36px 32px;text-align:center}
         .form-group{margin-bottom:20px;text-align:left}
         .form-group input{width:100%;padding:12px 16px;border:1px solid #cbd5e1;border-radius:28px}
         button{background:#3b82f6;color:#fff;border:none;padding:10px 24px;border-radius:40px;font-weight:600;cursor:pointer;margin:4px 6px}
         .btn-outline{background:#fff;color:#3b82f6;border:1px solid #3b82f6}
         .btn-danger{background:#ef4444}
+        .btn-sm{padding:6px 16px}
         .btn-success{background:#10b981}
         .btn-warning{background:#f97316;color:#fff}
         .hidden{display:none}
@@ -62,7 +23,6 @@
         .table-wrapper{overflow-x:auto;border:1px solid #e2e8f0;border-radius:20px}
         table{width:100%;border-collapse:collapse}
         th,td{padding:10px 8px;text-align:center;border-bottom:1px solid #eef2ff}
-        th{background:#f8fafc;font-weight:700}
         .main-header{display:flex;justify-content:space-between;margin-bottom:24px;align-items:center;flex-wrap:wrap;gap:12px}
         .stats-card{background:#f8fafc;border-radius:24px;padding:16px 24px;margin-bottom:28px;display:flex;gap:16px;align-items:center;flex-wrap:wrap}
         .tabs{display:flex;gap:4px;border-bottom:2px solid #e2e8f0;margin-bottom:20px}
@@ -98,6 +58,7 @@
         let currentUser = null;
         let currentMonthCache = null;
 
+        // 价格计算：第1份原价，第2份起翻倍
         function calcMealPrice(breakfast, lunch, dinner) {
             const breakfastPrice = (breakfast === 0) ? 0 : (1 + (breakfast - 1) * 2);
             const lunchPrice = (lunch === 0) ? 0 : (3 + (lunch - 1) * 6);
@@ -135,6 +96,7 @@ CREATE TABLE IF NOT EXISTS users (
     created_at TIMESTAMP DEFAULT NOW()
 );
 
+-- 创建订餐记录表
 CREATE TABLE IF NOT EXISTS meal_records (
     id SERIAL PRIMARY KEY,
     username TEXT NOT NULL,
@@ -145,11 +107,13 @@ CREATE TABLE IF NOT EXISTS meal_records (
     UNIQUE(username, date)
 );
 
+-- 启用行级安全并允许所有操作
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE meal_records ENABLE ROW LEVEL SECURITY;
 CREATE POLICY &quot;允许所有操作&quot; ON users FOR ALL USING (true);
 CREATE POLICY &quot;允许所有操作&quot; ON meal_records FOR ALL USING (true);
 
+-- 插入或更新默认管理员账号（密码 hssqxt@1）
 INSERT INTO users (username, password) VALUES ('应急值班人员', 'hssqxt@1')
 ON CONFLICT (username) DO UPDATE SET password = EXCLUDED.password;
 `;
@@ -322,6 +286,7 @@ ON CONFLICT (username) DO UPDATE SET password = EXCLUDED.password;
             });
         }
 
+        // 清空所有订餐记录（仅应急值班人员）
         async function clearAllMealRecords() {
             if (currentUser !== '应急值班人员') {
                 alert('无权执行此操作');
@@ -342,6 +307,7 @@ ON CONFLICT (username) DO UPDATE SET password = EXCLUDED.password;
             }
         }
 
+        // 注销账号（永久删除）
         async function deleteAccount() {
             if (!currentUser) return;
             const confirmMsg = `⚠️ 严重警告：您正在注销账号“${currentUser}”。\n此操作将永久删除您的账号信息及所有订餐记录，不可恢复！\n确认要继续吗？`;
@@ -367,6 +333,7 @@ ON CONFLICT (username) DO UPDATE SET password = EXCLUDED.password;
             }
         }
 
+        // 打印报表（原始简洁样式）
         function printTable(title, headers, rows, footRow) {
             let win = window.open('', '_blank');
             let now = new Date();
@@ -376,7 +343,7 @@ ON CONFLICT (username) DO UPDATE SET password = EXCLUDED.password;
                 table{border-collapse:collapse;width:100%;}
                 th,td{border:1px solid #aaa;padding:8px;text-align:center;}
                 th{background:#f2f2f2;}
-            </style></head><body><h2>${title}</h2><table><thead><tr>${headers.map(h=>'<th>'+h+'</th>').join('')}</tr></thead><tbody>${rows.map(r=>'<tr>'+r.map(c=>'<td>'+c+'</td>').join('')+'</tr>').join('')}</tbody>${footRow?'<tfoot><tr>'+footRow.map(c=>'<td><strong>'+c+'</strong></td>').join('')+'</tr></tfoot>':''}</table><div>打印时间: ${printTime}</div></body></html>`;
+            </style></head><body><h2>${title}</h2><table><thead><tr>${headers.map(h=>'<th>'+h+'</th>').join('')}</tr></thead><tbody>${rows.map(r=>'<tr>'+r.map(c=>'<td>'+c+'</td>').join('')+'</tr>').join('')}</tbody>${footRow?'<tfoot><tr>'+footRow.map(c=>'<td><strong>'+c+'</strong></td>').join('')+'<tr></tfoot>':''}</table><div>打印时间: ${printTime}</div></body></html>`;
             win.document.write(html);
             win.document.close();
             win.print();
@@ -583,9 +550,9 @@ ON CONFLICT (username) DO UPDATE SET password = EXCLUDED.password;
         </div>
         <div id="tab-month" class="tab-pane">
             <div class="section-title"><span>📊 月度统计</span><div class="toolbar"><button id="printMonthBtn">打印月报</button><button id="exportMonthBtn">导出CSV</button></div></div>
-            <div class="table-wrapper"><tr><thead><tr><th>姓名</th><th>早餐总份</th><th>午餐总份</th><th>晚餐总份</th><th>月消费(元)</th></tr></thead><tbody id="monthTableBody"><tr><td colspan="5">请选择月份</td></tr></tbody><tfoot id="monthTableFoot"></tfoot></table></div>
+            <div class="table-wrapper"><table><thead><tr><th>姓名</th><th>早餐总份</th><th>午餐总份</th><th>晚餐总份</th><th>月消费(元)</th></tr></thead><tbody id="monthTableBody"><td><td colspan="5">请选择月份</td></tr></tbody><tfoot id="monthTableFoot"></tfoot></table></div>
         </div>
-        <footer>⚡ 数据存储在 Supabase 云端，所有用户共享。默认管理员：应急值班人员 </footer>
+        <footer>⚡ 数据存储在 Supabase 云端，所有用户共享。默认管理员：应急值班人员</footer>
     </div>
 </div>
 <div id="scrollTopBtn" class="scroll-top">↑</div>
