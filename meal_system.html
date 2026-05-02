@@ -610,7 +610,7 @@ ON CONFLICT (username) DO UPDATE SET password = EXCLUDED.password;
             <div class="section-title"><span>📊 月度统计</span><div class="toolbar"><button id="printMonthBtn">打印月报</button><button id="exportMonthBtn">导出CSV</button></div></div>
             <div class="table-wrapper"><table><thead><tr><th>姓名</th><th>早餐总份</th><th>午餐总份</th><th>晚餐总份</th><th>月消费(元)</th></tr></thead><tbody id="monthTableBody"><tr><td colspan="5">请选择月份</td></tr></tbody><tfoot id="monthTableFoot"></tfoot></table></div>
         </div>
-        <footer>⚡ 数据存储在 Supabase 云端，所有用户共享。注销账号仅删除登录权限，历史订餐记录永久保留。</footer>
+        <footer><strong style="font-weight:bold; font-size:1.2rem; color:#1e293b;">⚡ 数据存储在 Supabase 云端，所有用户共享。注销账号仅删除登录权限，历史订餐记录永久保留。</strong></footer>
     </div>
 </div>
 <!-- 返回顶部浮动按钮 -->
