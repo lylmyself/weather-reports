@@ -5,303 +5,50 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>单位订餐系统（共享数据库）</title>
     <style>
-        /* 全局字体加大（仅屏幕显示，不影响打印） */
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        body {
-            background: #eef2f7;
-            padding: 15px;
-            font-family: system-ui, 'Segoe UI', Roboto, sans-serif;
-            font-size: 18px;  /* 屏幕字体增大 */
-            line-height: 1.5;
-        }
-        .app-container {
-            max-width: 1400px;
-            margin: 0 auto;
-            background: #fff;
-            border-radius: 28px;
-            padding: 28px 32px 36px;
-        }
-        .auth-panel {
-            max-width: 550px;
-            margin: 80px auto;
-            background: #fff;
-            border-radius: 40px;
-            padding: 40px 36px;
-            text-align: center;
-        }
-        .form-group {
-            margin-bottom: 24px;
-            text-align: left;
-        }
-        .form-group input {
-            width: 100%;
-            padding: 14px 18px;
-            font-size: 18px;
-            border: 1px solid #cbd5e1;
-            border-radius: 32px;
-        }
-        button {
-            background: #3b82f6;
-            color: #fff;
-            border: none;
-            padding: 12px 28px;
-            border-radius: 48px;
-            font-weight: 600;
-            font-size: 18px;
-            cursor: pointer;
-            margin: 6px 8px;
-            transition: all 0.2s;
-        }
-        button:hover {
-            opacity: 0.9;
-            transform: translateY(-1px);
-        }
-        .btn-outline {
-            background: #fff;
-            color: #3b82f6;
-            border: 1px solid #3b82f6;
-        }
-        .btn-danger {
-            background: #ef4444;
-        }
-        .btn-sm {
-            padding: 8px 20px;
-            font-size: 16px;
-        }
-        .btn-success {
-            background: #10b981;
-        }
-        .btn-warning {
-            background: #f97316;
-            color: #fff;
-        }
-        .hidden {
-            display: none;
-        }
-        .error-msg {
-            color: #b91c1c;
-            background: #fee2e2;
-            border-radius: 48px;
-            padding: 10px 18px;
-            margin-top: 16px;
-            font-size: 16px;
-        }
-        .info-msg {
-            background: #e6f7e6;
-            border-left: 4px solid #10b981;
-            padding: 14px;
-            margin-bottom: 24px;
-            font-size: 16px;
-            border-radius: 16px;
-        }
-        .table-wrapper {
-            overflow-x: auto;
-            border: 1px solid #e2e8f0;
-            border-radius: 24px;
-            margin-top: 20px;
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 17px;
-        }
-        th, td {
-            padding: 14px 10px;
-            text-align: center;
-            border-bottom: 1px solid #eef2ff;
-        }
-        th {
-            background: #f8fafc;
-            font-weight: 700;
-            font-size: 18px;
-        }
-        .main-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 28px;
-            flex-wrap: wrap;
-            gap: 16px;
-        }
-        .stats-card {
-            background: #f8fafc;
-            border-radius: 28px;
-            padding: 20px 28px;
-            margin-bottom: 32px;
-            display: flex;
-            gap: 20px;
-            align-items: center;
-            flex-wrap: wrap;
-        }
-        .tabs {
-            display: flex;
-            gap: 8px;
-            border-bottom: 2px solid #e2e8f0;
-            margin-bottom: 24px;
-        }
-        .tab-btn {
-            background: none;
-            border: none;
-            padding: 12px 24px;
-            font-weight: 700;
-            font-size: 18px;
-            cursor: pointer;
-            border-radius: 12px 12px 0 0;
-            color: #1f2937;
-        }
-        .tab-btn.active {
-            color: #3b82f6;
-            background: #eff6ff;
-            border-bottom: 2px solid #3b82f6;
-            margin-bottom: -2px;
-        }
-        .toolbar {
-            display: flex;
-            gap: 12px;
-            flex-wrap: wrap;
-        }
-        .modal-mask {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.6);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 1000;
-        }
-        .modal-container {
-            background: #fff;
-            width: 90%;
-            max-width: 550px;
-            border-radius: 40px;
-        }
-        .modal-header {
-            padding: 20px 28px;
-            border-bottom: 1px solid #e2e8f0;
-            font-weight: 700;
-            font-size: 20px;
-        }
-        .modal-body {
-            padding: 24px;
-        }
-        .meal-spin-group {
-            display: flex;
-            gap: 24px;
-            flex-wrap: wrap;
-            justify-content: center;
-        }
-        .spin-item {
-            background: #f1f5f9;
-            padding: 12px 20px;
-            border-radius: 48px;
-            font-size: 17px;
-        }
-        .spin-input {
-            width: 90px;
-            padding: 10px;
-            border-radius: 32px;
-            border: 1px solid #cbd5e1;
-            text-align: center;
-            font-size: 18px;
-        }
-        .modal-footer {
-            padding: 20px 28px;
-            border-top: 1px solid #e2e8f0;
-            display: flex;
-            justify-content: flex-end;
-        }
-        footer {
-            text-align: center;
-            font-size: 15px;
-            color: #94a3b8;
-            margin-top: 40px;
-        }
-        .code-block {
-            background: #1e293b;
-            color: #e2e8f0;
-            padding: 16px;
-            border-radius: 16px;
-            font-family: monospace;
-            font-size: 14px;
-            text-align: left;
-            overflow-x: auto;
-            margin-top: 16px;
-        }
-        .btn-copy {
-            background: #475569;
-            margin-top: 12px;
-        }
-        .checkbox-group {
-            display: flex;
-            justify-content: flex-end;
-            align-items: center;
-            gap: 14px;
-        }
-        .checkbox-group input[type="checkbox"] {
-            width: 22px;
-            height: 22px;
-            transform: scale(1.2);
-            margin: 0;
-            cursor: pointer;
-        }
-        .checkbox-group label {
-            margin: 0;
-            font-size: 17px;
-            color: #334155;
-        }
-        .price-note {
-            background: #fef9c3;
-            border-left: 4px solid #eab308;
-            padding: 8px 16px;
-            font-size: 15px;
-            border-radius: 24px;
-        }
-        .scroll-top {
-            position: fixed;
-            bottom: 30px;
-            right: 30px;
-            background: #3b82f6;
-            color: white;
-            width: 56px;
-            height: 56px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-            transition: all 0.3s;
-            z-index: 999;
-            font-size: 28px;
-            font-weight: bold;
-        }
-        .scroll-top:hover {
-            background: #2563eb;
-            transform: translateY(-4px);
-        }
-        .button-group {
-            display: flex;
-            gap: 16px;
-            align-items: center;
-            flex-wrap: wrap;
-        }
-        input, select {
-            font-size: 17px;
-            padding: 10px 14px;
-        }
-        #monthPicker {
-            font-size: 17px;
-            padding: 8px 12px;
-            border-radius: 32px;
-            border: 1px solid #cbd5e1;
-        }
+        *{margin:0;padding:0;box-sizing:border-box;font-family:system-ui,'Segoe UI',Roboto,sans-serif}
+        body{background:#eef2f7;padding:20px}
+        .app-container{max-width:1400px;margin:0 auto;background:#fff;border-radius:28px;padding:24px 28px 32px}
+        .auth-panel{max-width:500px;margin:60px auto;background:#fff;border-radius:36px;padding:36px 32px;text-align:center}
+        .form-group{margin-bottom:20px;text-align:left}
+        .form-group input{width:100%;padding:12px 16px;border:1px solid #cbd5e1;border-radius:28px}
+        button{background:#3b82f6;color:#fff;border:none;padding:10px 24px;border-radius:40px;font-weight:600;cursor:pointer;margin:4px 6px}
+        .btn-outline{background:#fff;color:#3b82f6;border:1px solid #3b82f6}
+        .btn-danger{background:#ef4444}
+        .btn-sm{padding:6px 16px}
+        .btn-success{background:#10b981}
+        .btn-warning{background:#f97316;color:#fff}
+        .hidden{display:none}
+        .error-msg{color:#b91c1c;background:#fee2e2;border-radius:40px;padding:8px 16px;margin-top:12px}
+        .info-msg{background:#e6f7e6;border-left:4px solid #10b981;padding:10px;margin-bottom:20px}
+        .table-wrapper{overflow-x:auto;border:1px solid #e2e8f0;border-radius:20px}
+        table{width:100%;border-collapse:collapse}
+        th,td{padding:10px 8px;text-align:center;border-bottom:1px solid #eef2ff}
+        .main-header{display:flex;justify-content:space-between;margin-bottom:24px;align-items:center;flex-wrap:wrap;gap:12px}
+        .stats-card{background:#f8fafc;border-radius:24px;padding:16px 24px;margin-bottom:28px;display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+        .tabs{display:flex;gap:4px;border-bottom:2px solid #e2e8f0;margin-bottom:20px}
+        .tab-btn{background:none;border:none;padding:10px 20px;font-weight:600;cursor:pointer;border-radius:8px 8px 0 0;color:#1f2937}
+        .tab-btn.active{color:#3b82f6;background:#eff6ff;border-bottom:2px solid #3b82f6;margin-bottom:-2px}
+        .tab-pane{display:none}
+        .tab-pane.active{display:block}
+        .toolbar{display:flex;gap:10px;flex-wrap:wrap}
+        .modal-mask{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:1000}
+        .modal-container{background:#fff;width:90%;max-width:500px;border-radius:36px}
+        .modal-header{padding:18px 24px;border-bottom:1px solid #e2e8f0;font-weight:700}
+        .modal-body{padding:20px}
+        .meal-spin-group{display:flex;gap:20px;flex-wrap:wrap;justify-content:center}
+        .spin-item{background:#f1f5f9;padding:8px 15px;border-radius:40px}
+        .spin-input{width:80px;padding:8px;border-radius:28px;border:1px solid #cbd5e1;text-align:center}
+        .modal-footer{padding:16px 24px;border-top:1px solid #e2e8f0;display:flex;justify-content:flex-end}
+        footer{text-align:center;font-size:12px;color:#94a3b8;margin-top:30px}
+        .code-block{background:#1e293b;color:#e2e8f0;padding:12px;border-radius:12px;font-family:monospace;font-size:12px;text-align:left;overflow-x:auto;margin-top:12px}
+        .btn-copy{background:#475569;margin-top:8px}
+        .checkbox-group{display:flex;justify-content:flex-end;align-items:center;gap:12px}
+        .checkbox-group input[type="checkbox"]{width:20px;height:20px;transform:scale(1.1);margin:0;cursor:pointer}
+        .checkbox-group label{margin:0;font-size:0.95rem;color:#334155}
+        .price-note{background:#fef9c3;border-left:4px solid #eab308;padding:6px 12px;font-size:12px;border-radius:20px}
+        .scroll-top{position:fixed;bottom:30px;right:30px;background:#3b82f6;color:white;width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,0.15);transition:all 0.3s;z-index:999;font-size:24px;font-weight:bold}
+        .scroll-top:hover{background:#2563eb;transform:translateY(-3px)}
+        .button-group{display:flex;gap:12px;align-items:center}
     </style>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
@@ -360,7 +107,7 @@ CREATE TABLE IF NOT EXISTS meal_records (
     UNIQUE(username, date)
 );
 
--- 启用行级安全并允许所有操作（共享模式）
+-- 启用行级安全并允许所有操作
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE meal_records ENABLE ROW LEVEL SECURITY;
 CREATE POLICY &quot;允许所有操作&quot; ON users FOR ALL USING (true);
@@ -475,7 +222,7 @@ ON CONFLICT (username) DO UPDATE SET password = EXCLUDED.password;
                 sumB += r.breakfast; sumL += r.lunch; sumD += r.dinner; sumMoney += total;
                 tbody.insertAdjacentHTML('beforeend', `<tr><td>${escapeHtml(r.username)}</td><td>${r.breakfast}</td><td>${r.lunch}</td><td>${r.dinner}</td><td>¥${total.toFixed(2)}</td></tr>`);
             }
-            document.getElementById('todayTableFoot').innerHTML = `<tr style="background:#eef2ff;font-weight:bold"><td>总计</td><td>${sumB}</td><td>${sumL}</td><td>${sumD}</td><td>¥${sumMoney.toFixed(2)}</td><tr>`;
+            document.getElementById('todayTableFoot').innerHTML = `<tr style="background:#eef2ff;font-weight:bold"><td>总计</td><td>${sumB}</td><td>${sumL}</td><td>${sumD}</td><td>¥${sumMoney.toFixed(2)}</td></tr>`;
             document.getElementById('todayDateLabel').innerText = getTodayStr();
         }
 
@@ -494,7 +241,7 @@ ON CONFLICT (username) DO UPDATE SET password = EXCLUDED.password;
                 sumB += s.breakfast_total; sumL += s.lunch_total; sumD += s.dinner_total;
                 tbody.insertAdjacentHTML('beforeend', `<tr><td>${escapeHtml(s.username)}</td><td>${s.breakfast_total}</td><td>${s.lunch_total}</td><td>${s.dinner_total}</td><td>¥${s.total_money.toFixed(2)}</td></tr>`);
             }
-            document.getElementById('monthTableFoot').innerHTML = `<tr style="background:#eef2ff;font-weight:bold"><td>总计</th><td>${sumB}</th><td>${sumL}</th><td>${sumD}</th><td>¥${totalAll.toFixed(2)}</th></tr>`;
+            document.getElementById('monthTableFoot').innerHTML = `<tr style="background:#eef2ff;font-weight:bold"><td>总计</td><td>${sumB}</td><td>${sumL}</td><td>${sumD}</td><td>¥${totalAll.toFixed(2)}</td></tr>`;
             let userStat = stats.find(s => s.username === currentUser);
             let total = userStat ? userStat.total_money : 0;
             document.getElementById('monthTotalAmount').innerText = `本月本人总消费: ¥${total.toFixed(2)}`;
@@ -508,14 +255,14 @@ ON CONFLICT (username) DO UPDATE SET password = EXCLUDED.password;
                 modal.className = 'modal-mask';
                 modal.innerHTML = `
                     <div class="modal-container">
-                        <div class="modal-header"><span>✏️ 编辑今日订餐 (${today}) - ${escapeHtml(currentUser)}</span><button id="closeModalBtn" style="background:none;border:none;font-size:28px;float:right;">&times;</button></div>
+                        <div class="modal-header"><span>✏️ 编辑今日订餐 (${today}) - ${escapeHtml(currentUser)}</span><button id="closeModalBtn" style="background:none;border:none;font-size:24px;float:right;">&times;</button></div>
                         <div class="modal-body">
                             <div class="meal-spin-group">
                                 <div class="spin-item">🥐 早餐 <input type="number" min="0" max="10" id="editBreakfast" class="spin-input" value="${rec.breakfast}"></div>
                                 <div class="spin-item">🍱 午餐 <input type="number" min="0" max="10" id="editLunch" class="spin-input" value="${rec.lunch}"></div>
                                 <div class="spin-item">🍝 晚餐 <input type="number" min="0" max="10" id="editDinner" class="spin-input" value="${rec.dinner}"></div>
                             </div>
-                            <div style="text-align:center; margin-top:16px;">💡 价格规则：第1份原价（早1/午3/晚2），第2份起每份价格翻倍。</div>
+                            <div style="text-align:center; margin-top:12px;">💡 价格规则：第1份原价（早1/午3/晚2），第2份起每份价格翻倍。</div>
                         </div>
                         <div class="modal-footer"><button id="cancelModalBtn" class="btn-outline">取消</button><button id="saveMealBtn" class="btn-success">保存</button></div>
                     </div>
@@ -586,7 +333,7 @@ ON CONFLICT (username) DO UPDATE SET password = EXCLUDED.password;
             }
         }
 
-        // 打印报表（恢复原始简洁样式）
+        // 打印报表（原始简洁样式）
         function printTable(title, headers, rows, footRow) {
             let win = window.open('', '_blank');
             let now = new Date();
@@ -596,7 +343,7 @@ ON CONFLICT (username) DO UPDATE SET password = EXCLUDED.password;
                 table{border-collapse:collapse;width:100%;}
                 th,td{border:1px solid #aaa;padding:8px;text-align:center;}
                 th{background:#f2f2f2;}
-            </style></head><body><h2>${title}</h2><table><thead><tr>${headers.map(h=>'<th>'+h+'</th>').join('')}</tr></thead><tbody>${rows.map(r=>'<tr>'+r.map(c=>'<td>'+c+'</td>').join('')+'</tr>').join('')}</tbody>${footRow?'<tfoot><tr>'+footRow.map(c=>'<td><strong>'+c+'</strong></td>').join('')+'</tr></tfoot>':''}</table><div>打印时间: ${printTime}</div></body></html>`;
+            </style></head><body><h2>${title}</h2><table><thead><tr>${headers.map(h=>'<th>'+h+'</th>').join('')}</tr></thead><tbody>${rows.map(r=>'<tr>'+r.map(c=>'<td>'+c+'</td>').join('')+'</tr>').join('')}</tbody>${footRow?'<tfoot><tr>'+footRow.map(c=>'<td><strong>'+c+'</strong></td>').join('')+'<tr></tfoot>':''}</table><div>打印时间: ${printTime}</div></body></html>`;
             win.document.write(html);
             win.document.close();
             win.print();
@@ -803,9 +550,9 @@ ON CONFLICT (username) DO UPDATE SET password = EXCLUDED.password;
         </div>
         <div id="tab-month" class="tab-pane">
             <div class="section-title"><span>📊 月度统计</span><div class="toolbar"><button id="printMonthBtn">打印月报</button><button id="exportMonthBtn">导出CSV</button></div></div>
-            <div class="table-wrapper"><table><thead><tr><th>姓名</th><th>早餐总份</th><th>午餐总份</th><th>晚餐总份</th><th>月消费(元)</th></tr></thead><tbody id="monthTableBody"><tr><td colspan="5">请选择月份</td></tr></tbody><tfoot id="monthTableFoot"></tfoot></table></div>
+            <div class="table-wrapper"><table><thead><tr><th>姓名</th><th>早餐总份</th><th>午餐总份</th><th>晚餐总份</th><th>月消费(元)</th></tr></thead><tbody id="monthTableBody"><td><td colspan="5">请选择月份</td></tr></tbody><tfoot id="monthTableFoot"></tfoot></table></div>
         </div>
-        <footer>⚡ 数据存储在 Supabase 云端，所有用户共享。默认管理员：应急值班人员 / hssqxt@1</footer>
+        <footer>⚡ 数据存储在 Supabase 云端，所有用户共享。默认管理员：应急值班人员</footer>
     </div>
 </div>
 <div id="scrollTopBtn" class="scroll-top">↑</div>
