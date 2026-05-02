@@ -22,7 +22,7 @@
         .table-wrapper{overflow-x:auto;border:1px solid #e2e8f0;border-radius:20px}
         table{width:100%;border-collapse:collapse}
         th,td{padding:10px 8px;text-align:center;border-bottom:1px solid #eef2ff}
-        .main-header{display:flex;justify-content:space-between;margin-bottom:24px}
+        .main-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;flex-wrap:wrap;gap:12px}
         .stats-card{background:#f8fafc;border-radius:24px;padding:16px 24px;margin-bottom:28px;display:flex;gap:16px;align-items:center;flex-wrap:wrap}
         .tabs{display:flex;gap:4px;border-bottom:2px solid #e2e8f0;margin-bottom:20px}
         .tab-btn{background:none;border:none;padding:10px 20px;font-weight:600;cursor:pointer;border-radius:8px 8px 0 0;color:#1f2937}
@@ -65,7 +65,33 @@
             padding: 6px 12px;
             font-size: 12px;
             border-radius: 20px;
-            margin-left: 16px;
+        }
+        /* 返回顶部按钮样式 */
+        .scroll-top {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: #3b82f6;
+            color: white;
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            transition: all 0.3s;
+            z-index: 999;
+        }
+        .scroll-top:hover {
+            background: #2563eb;
+            transform: translateY(-3px);
+        }
+        .button-group {
+            display: flex;
+            gap: 12px;
+            align-items: center;
         }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -131,9 +157,9 @@ ALTER TABLE meal_records ENABLE ROW LEVEL SECURITY;
 CREATE POLICY &quot;允许所有操作&quot; ON users FOR ALL USING (true);
 CREATE POLICY &quot;允许所有操作&quot; ON meal_records FOR ALL USING (true);
 
--- 插入默认管理员账号
+-- 插入或更新默认管理员账号（密码已改为 hssqxt@1）
 INSERT INTO users (username, password) VALUES ('应急值班人员', '123')
-ON CONFLICT (username) DO NOTHING;
+ON CONFLICT (username) DO UPDATE SET password = EXCLUDED.password;
 `;
                         return false;
                     }
@@ -325,9 +351,43 @@ ON CONFLICT (username) DO NOTHING;
             }
         }
 
+        // 注销当前账号（永久删除用户及所有订餐记录）
+        async function deleteAccount() {
+            if (!currentUser) return;
+            const confirmMsg = `⚠️ 严重警告：您正在注销账号“${currentUser}”。
+此操作将永久删除您的账号信息及所有订餐记录，不可恢复！
+确认要继续吗？`;
+            if (!confirm(confirmMsg)) return;
+            try {
+                // 先删除该用户的订餐记录
+                const { error: delMealError } = await supabaseClient.from('meal_records').delete().eq('username', currentUser);
+                if (delMealError) throw delMealError;
+                // 再删除用户
+                const { error: delUserError } = await supabaseClient.from('users').delete().eq('username', currentUser);
+                if (delUserError) throw delUserError;
+                alert('✅ 账号已成功注销，所有数据已清除。');
+                // 清除本地存储的记住密码
+                localStorage.removeItem('savedUser');
+                localStorage.removeItem('savedPwd');
+                // 返回登录界面
+                currentUser = null;
+                document.getElementById('authView').classList.remove('hidden');
+                document.getElementById('mainView').classList.add('hidden');
+                document.getElementById('loginForm').classList.remove('hidden');
+                document.getElementById('registerForm').classList.add('hidden');
+                document.getElementById('loginUsername').value = '';
+                document.getElementById('loginPassword').value = '';
+                document.getElementById('rememberCheckbox').checked = false;
+            } catch(e) {
+                alert('注销失败：' + e.message);
+            }
+        }
+
         function printTable(title, headers, rows, footRow) {
             let win = window.open('', '_blank');
-            let html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${title}</title><style>body{font-family:system-ui;margin:2rem;}table{border-collapse:collapse;width:100%;}th,td{border:1px solid #aaa;padding:8px;text-align:center;}th{background:#f2f2f2;}</style></head><body><h2>${title}</h2><table><thead><tr>${headers.map(h=>'<th>'+h+'</th>').join('')}</tr></thead><tbody>${rows.map(r=>'<tr>'+r.map(c=>'<td>'+c+'</td>').join('')+'</tr>').join('')}</tbody>${footRow?'<tfoot><tr>'+footRow.map(c=>'<td><strong>'+c+'</strong></td>').join('')+'</tr></tfoot>':''}</table><div>打印时间: '+new Date().toLocaleString()+'</div></body></html>`;
+            let now = new Date();
+            let printTime = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
+            let html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${title}</title><style>body{font-family:system-ui;margin:2rem;}table{border-collapse:collapse;width:100%;}th,td{border:1px solid #aaa;padding:8px;text-align:center;}th{background:#f2f2f2;}</style></head><body><h2>${title}</h2><table><thead><tr>${headers.map(h=>'<th>'+h+'</th>').join('')}</tr></thead><tbody>${rows.map(r=>'</table>'+r.map(c=>'<td>'+c+'</td>').join('')+'</tr>').join('')}</tbody>${footRow?'<tfoot><tr>'+footRow.map(c=>'<td><strong>'+c+'</strong></td>').join('')+'</tr></tfoot>':''}</table><div>打印时间: ${printTime}</div></body></html>`;
             win.document.write(html);
             win.document.close();
             win.print();
@@ -376,6 +436,11 @@ ON CONFLICT (username) DO NOTHING;
             exportCSV(`订餐月报_${document.getElementById('monthPicker').value}`, ['姓名','早餐总份','午餐总份','晚餐总份','月消费(元)'], rows, ['总计', sumB, sumL, sumD, sumM], `订餐月报_${document.getElementById('monthPicker').value}.csv`);
         }
 
+        // 返回顶部功能
+        function scrollToTop() {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
         async function initMain() {
             document.getElementById('authView').classList.add('hidden');
             document.getElementById('mainView').classList.remove('hidden');
@@ -409,8 +474,16 @@ ON CONFLICT (username) DO NOTHING;
             document.getElementById('exportMonthBtn').onclick = handleExportMonth;
             document.getElementById('refreshMonthBtn').onclick = () => { let m = document.getElementById('monthPicker').value; if(/^\d{4}-\d{2}$/.test(m)) renderMonth(m); else alert('月份格式YYYY-MM'); };
             document.getElementById('editTodayBtn').onclick = openEditModal;
-            document.getElementById('logoutBtn').onclick = () => { currentUser = null; document.getElementById('authView').classList.remove('hidden'); document.getElementById('mainView').classList.add('hidden'); document.getElementById('loginForm').classList.remove('hidden'); document.getElementById('registerForm').classList.add('hidden'); };
+            document.getElementById('logoutBtn').onclick = () => { 
+                currentUser = null; 
+                document.getElementById('authView').classList.remove('hidden'); 
+                document.getElementById('mainView').classList.add('hidden'); 
+                document.getElementById('loginForm').classList.remove('hidden'); 
+                document.getElementById('registerForm').classList.add('hidden'); 
+                // 不清除记住密码，仅退出登录
+            };
             document.getElementById('clearDataBtn').onclick = clearAllMealRecords;
+            document.getElementById('deleteAccountBtn').onclick = deleteAccount;
             
             // 登录后自动激活月度统计标签
             const defaultMonthTab = document.querySelector('.tab-btn[data-tab="month"]');
@@ -460,6 +533,12 @@ ON CONFLICT (username) DO NOTHING;
                 document.getElementById('loginPassword').value = savedPwd;
                 document.getElementById('rememberCheckbox').checked = true;
             }
+            
+            // 返回顶部按钮监听
+            const scrollTopBtn = document.getElementById('scrollTopBtn');
+            if (scrollTopBtn) {
+                scrollTopBtn.addEventListener('click', scrollToTop);
+            }
         };
     </script>
 </head>
@@ -498,9 +577,10 @@ ON CONFLICT (username) DO NOTHING;
     <div id="mainView" class="app-container hidden">
         <div class="main-header">
             <span id="welcomeUser"></span>
-            <div style="display: flex; align-items: center; gap: 12px;">
+            <div class="button-group">
                 <span class="price-note">💰 价格规则：第1份原价（早1/午3/晚2），第2份起翻倍</span>
                 <button id="logoutBtn" class="btn-danger btn-sm">退出</button>
+                <button id="deleteAccountBtn" class="btn-warning btn-sm">注销账号</button>
             </div>
         </div>
         <div class="stats-card">
@@ -508,7 +588,7 @@ ON CONFLICT (username) DO NOTHING;
             <button id="refreshMonthBtn">刷新月报</button>
             <span id="monthTotalAmount"></span>
             <button id="editTodayBtn" class="btn-success">✏️ 修改今日订餐</button>
-            <button id="clearDataBtn" class="btn-warning btn-sm hidden">⚠️ 清空所有订餐数据（注意不需操作）</button>
+            <button id="clearDataBtn" class="btn-warning btn-sm hidden">⚠️ 清空所有订餐数据（仅应急值班人员）</button>
         </div>
         <div class="tabs">
             <button class="tab-btn active" data-tab="today">📋 今日订餐</button>
@@ -525,5 +605,7 @@ ON CONFLICT (username) DO NOTHING;
         <footer>⚡ 数据存储在 Supabase 云端，所有用户共享。</footer>
     </div>
 </div>
+<!-- 返回顶部浮动按钮 -->
+<div id="scrollTopBtn" class="scroll-top">↑</div>
 </body>
 </html>
