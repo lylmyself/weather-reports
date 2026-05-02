@@ -59,6 +59,14 @@
             font-size: 0.95rem;
             color: #334155;
         }
+        .price-note {
+            background: #fef9c3;
+            border-left: 4px solid #eab308;
+            padding: 6px 12px;
+            font-size: 12px;
+            border-radius: 20px;
+            margin-left: 16px;
+        }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
@@ -67,7 +75,14 @@
         let supabaseClient;
         let currentUser = null;
         let currentMonthCache = null;
-        const PRICES = { breakfast: 1.0, lunch: 3.0, dinner: 2.0 };
+
+        // 新价格计算函数：第1份原价，第2份起每份按原价×2
+        function calcMealPrice(breakfast, lunch, dinner) {
+            const breakfastPrice = (breakfast === 0) ? 0 : (1 + (breakfast - 1) * 2);
+            const lunchPrice = (lunch === 0) ? 0 : (3 + (lunch - 1) * 6);
+            const dinnerPrice = (dinner === 0) ? 0 : (2 + (dinner - 1) * 4);
+            return breakfastPrice + lunchPrice + dinnerPrice;
+        }
 
         function initSupabase() {
             if (typeof supabaseJs !== 'undefined' && supabaseJs.createClient) {
@@ -199,7 +214,7 @@ ON CONFLICT (username) DO NOTHING;
                     breakfastTotal += rec.breakfast;
                     lunchTotal += rec.lunch;
                     dinnerTotal += rec.dinner;
-                    money += rec.breakfast*1 + rec.lunch*3 + rec.dinner*2;
+                    money += calcMealPrice(rec.breakfast, rec.lunch, rec.dinner);
                 }
                 stats.push({ username: u.username, breakfast_total: breakfastTotal, lunch_total: lunchTotal, dinner_total: dinnerTotal, total_money: money });
                 totalAll += money;
@@ -221,7 +236,7 @@ ON CONFLICT (username) DO NOTHING;
             if (records.length === 0) { tbody.innerHTML = '<tr><td colspan="5">暂无数据</td></tr>'; document.getElementById('todayTableFoot').innerHTML = ''; return; }
             let sumB=0, sumL=0, sumD=0, sumMoney=0;
             for (let r of records) {
-                let total = r.breakfast*1 + r.lunch*3 + r.dinner*2;
+                let total = calcMealPrice(r.breakfast, r.lunch, r.dinner);
                 sumB += r.breakfast; sumL += r.lunch; sumD += r.dinner; sumMoney += total;
                 tbody.insertAdjacentHTML('beforeend', `<tr><td>${escapeHtml(r.username)}</td><td>${r.breakfast}</td><td>${r.lunch}</td><td>${r.dinner}</td><td>¥${total.toFixed(2)}</td></tr>`);
             }
@@ -265,7 +280,7 @@ ON CONFLICT (username) DO NOTHING;
                                 <div class="spin-item">🍱 午餐 <input type="number" min="0" max="10" id="editLunch" class="spin-input" value="${rec.lunch}"></div>
                                 <div class="spin-item">🍝 晚餐 <input type="number" min="0" max="10" id="editDinner" class="spin-input" value="${rec.dinner}"></div>
                             </div>
-                            <div style="text-align:center; margin-top:12px;">💡 价格：早餐¥1，午餐¥3，晚餐¥2</div>
+                            <div style="text-align:center; margin-top:12px;">💡 价格规则：第1份原价（早1/午3/晚2），第2份起每份价格翻倍。</div>
                         </div>
                         <div class="modal-footer"><button id="cancelModalBtn" class="btn-outline">取消</button><button id="saveMealBtn" class="btn-success">保存</button></div>
                     </div>
@@ -301,7 +316,6 @@ ON CONFLICT (username) DO NOTHING;
                 const { error } = await supabaseClient.from('meal_records').delete().neq('id', 0);
                 if (error) throw error;
                 alert('✅ 所有订餐数据已清空');
-                // 刷新页面显示
                 await renderToday();
                 const monthPicker = document.getElementById('monthPicker');
                 if (monthPicker && monthPicker.value) await renderMonth(monthPicker.value);
@@ -335,13 +349,13 @@ ON CONFLICT (username) DO NOTHING;
             let records = await getAllTodayRecords();
             if (!records.length) { alert('无今日数据'); return; }
             let sumB=0,sumL=0,sumD=0,sumM=0;
-            let rows = records.map(r => { let total = r.breakfast*1 + r.lunch*3 + r.dinner*2; sumB+=r.breakfast; sumL+=r.lunch; sumD+=r.dinner; sumM+=total; return [r.username, r.breakfast, r.lunch, r.dinner, `¥${total.toFixed(2)}`]; });
+            let rows = records.map(r => { let total = calcMealPrice(r.breakfast, r.lunch, r.dinner); sumB+=r.breakfast; sumL+=r.lunch; sumD+=r.dinner; sumM+=total; return [r.username, r.breakfast, r.lunch, r.dinner, `¥${total.toFixed(2)}`]; });
             printTable(`今日订餐概览 (${getTodayStr()})`, ['姓名','早餐','午餐','晚餐','合计'], rows, ['总计', sumB, sumL, sumD, `¥${sumM.toFixed(2)}`]);
         }
 
         async function handleExportToday() {
             let records = await getAllTodayRecords();
-            let rows = records.map(r => [r.username, r.breakfast, r.lunch, r.dinner, (r.breakfast*1 + r.lunch*3 + r.dinner*2)]);
+            let rows = records.map(r => [r.username, r.breakfast, r.lunch, r.dinner, calcMealPrice(r.breakfast, r.lunch, r.dinner)]);
             let sumB=0,sumL=0,sumD=0,sumM=0;
             rows.forEach(r=>{ sumB+=r[1]; sumL+=r[2]; sumD+=r[3]; sumM+=r[4]; });
             exportCSV(`订餐日报_${getTodayStr()}`, ['姓名','早餐','午餐','晚餐','合计(元)'], rows, ['总计', sumB, sumL, sumD, sumM], `订餐日报_${getTodayStr()}.csv`);
@@ -367,7 +381,6 @@ ON CONFLICT (username) DO NOTHING;
             document.getElementById('mainView').classList.remove('hidden');
             document.getElementById('welcomeUser').innerText = `👋 欢迎, ${currentUser}`;
             
-            // 仅当当前用户为“应急值班人员”时显示清空数据按钮
             const clearBtn = document.getElementById('clearDataBtn');
             if (currentUser === '应急值班人员') {
                 clearBtn.classList.remove('hidden');
@@ -483,7 +496,13 @@ ON CONFLICT (username) DO NOTHING;
         </div>
     </div>
     <div id="mainView" class="app-container hidden">
-        <div class="main-header"><span id="welcomeUser"></span><button id="logoutBtn" class="btn-danger btn-sm">退出</button></div>
+        <div class="main-header">
+            <span id="welcomeUser"></span>
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <span class="price-note">💰 价格规则：第1份原价（早1/午3/晚2），第2份起翻倍</span>
+                <button id="logoutBtn" class="btn-danger btn-sm">退出</button>
+            </div>
+        </div>
         <div class="stats-card">
             <input type="month" id="monthPicker">
             <button id="refreshMonthBtn">刷新月报</button>
