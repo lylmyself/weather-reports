@@ -46,8 +46,8 @@
     </style>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
-        const SUPABASE_URL = "https://hcaeqgdaggzxqcdisukq.supabase.co";
-        const SUPABASE_ANON_KEY = "sb_publishable_DA9bpv1TSbVdTWZXrpGreA_0aafyDLE";
+        const SUPABASE_URL = "https://kuuueluhreatleklkhlr.supabase.co";
+        const SUPABASE_ANON_KEY = "sb_publishable_-NRarg-uCiIpI396QaDcTQ_HAaWnIdB";
         let supabase;
         let currentUser = null;
         let currentMonthCache = null;
@@ -290,7 +290,7 @@ ON CONFLICT (username) DO NOTHING;
             });
         }
 
-        // 打印与导出（与之前相同，为了篇幅简化，但保留核心）
+        // 打印与导出
         function printTable(title, headers, rows, footRow) {
             let win = window.open('', '_blank');
             let html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${title}</title><style>body{font-family:system-ui;margin:2rem;}table{border-collapse:collapse;width:100%;}th,td{border:1px solid #aaa;padding:8px;text-align:center;}th{background:#f2f2f2;}</style></head><body><h2>${title}</h2><table><thead><tr>${headers.map(h=>'<th>'+h+'</th>').join('')}</tr></thead><tbody>${rows.map(r=>'<tr>'+r.map(c=>'<td>'+c+'</td>').join('')+'</tr>').join('')}</tbody>${footRow?'<tfoot><tr>'+footRow.map(c=>'<td><strong>'+c+'</strong></td>').join('')+'</tr></tfoot>':''}</table><div>打印时间: '+new Date().toLocaleString()+'</div></body></html>`;
