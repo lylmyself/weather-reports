@@ -1,8 +1,63 @@
-<!DOCTYPE html><html><head><meta charset="utf-8"><title>é»„å±±å¸‚çŸ­ä¸´å¤©æ°”é¢„æŠ¥</title><style>body{font-family:"Microsoft YaHei",SimHei,sans-serif;background:#f5f5f5;margin:20px;}.county{color:#003399;font-weight:bold;font-size:20px;}.img-wrap{text-align:center;margin:10px 0;}.img-title{font-size:22px;color:blue;font-weight:bold;margin-bottom:5px;}.img-wrap img{max-width:90%;border:1px solid #888;}.alert{color:red;font-weight:bold;}</style></head><body>
-<h1 style="text-align:center;color:darkred;font-size:36px;">é»„å±±å¸‚çŸ­ä¸´å¤©æ°”é¢„æŠ¥</h1>
-<p style="text-align:center;font-size:22px;">æœŸå�·ï¼šç¬¬ 2 æœŸ ã€€ã€€å�‘å¸ƒæ—¶é—´ï¼š2026å¹´11æœˆ05æ—¥ 09:44</p>
-<h3 style="color:blue;font-size:32px;margin-bottom:0;">0-3å°�æ—¶çŸ­æ—¶å¼ºé™�æ°´é¢„æŠ¥</h3><p style="font-size:32px;font-weight:bold;margin-top:0;">æš‚æ— </p>
-<h3 style="color:blue;font-size:32px;margin-bottom:0;">0-3å°�æ—¶é›·æš´å¤§é£�é¢„æŠ¥</h3><p style="font-size:32px;font-weight:bold;margin-top:0;">æš‚æ— </p>
-<div style="text-align:center;margin-top:20px;"><button onclick="new Audio('alarm.wav').play()">ğŸ”” æ’­æ”¾è­¦æŠ¥</button></div>
-<script>setTimeout(()=>location.reload(),60000);</script>
+<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8">
+<meta http-equiv="refresh" content="60">
+<title>短临天气预报</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <style>
+    body { margin:0; padding:0; line-height: 1.6; font-size: 16px; }
+    .town { color: black; display: inline-block; margin-right: 0.8em; white-space: nowrap; }
+    .county { font-weight: bold; margin-right: 0.8em; font-size: 24px; }
+    .image-container { width:100%; text-align:center; margin:0; padding:0; }
+    .image-container img { width:100%; height:auto; display:block; margin:0 auto; }
+    </style>
+    
+
+<script>
+var audioPlayer;
+var isPlaying = false;
+function playAlertSound() {
+  if (!isPlaying) {
+    audioPlayer = new Audio("alarm.wav");
+    audioPlayer.loop = true;
+    audioPlayer.play().catch(e => console.log("播放失败:", e));
+    isPlaying = true;
+    document.getElementById("alertSoundBtn").innerText = "停止警报声";
+  } else {
+    audioPlayer.pause();
+    isPlaying = false;
+    document.getElementById("alertSoundBtn").innerText = "播放警报声";
+  }
+}
+</script>
+
+</head><body>
+<h1 align="center" style="color:red;font-size:48px;">黄山市短临天气预报</h1>
+<h3 align="center">2026年11月05日第3期</h3>
+<hr style="height:6px;border:none;background-color:red;box-shadow:none;"/>
+<h3 style="color:blue; font-size:32px; margin-bottom:0;">0-3小时短时强降水天气预报区域：</h3><p style="font-size:32px; font-weight:bold; margin-top:0;">暂无</p>
+<h3 style="color:blue; font-size:32px; margin-bottom:0;">0-3小时雷暴大风天气预报区域：</h3><p style="font-size:32px; font-weight:bold; margin-top:0;">暂无</p>
+<table border="1" align="center" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse; page-break-inside:avoid; width:100%;">
+<tr style="page-break-inside:avoid; page-break-after:avoid;"><td align="center" style="padding:0; margin:0; border:1px solid #000; vertical-align:top;">
+<p style="margin:0; padding:0; line-height:normal; font-weight:bold; font-size:24px; text-align:center; mso-para-margin:0; margin-bottom:0; padding-bottom:0;">组合反射率乡镇落区预报</p>
+<div style="margin:0; padding:0; line-height:0; font-size:0; mso-line-height-rule:exactly; text-align:center;">
+<div>图片不存在: D:\aiyb\nowcastyb\forecast_cref_towns_03h.png</div>
+</div>
+</td></tr>
+<tr style="page-break-inside:avoid; page-break-after:avoid;"><td align="center" style="padding:0; margin:0; border:1px solid #000; vertical-align:top;">
+<p style="margin:0; padding:0; line-height:normal; font-weight:bold; font-size:24px; text-align:center; mso-para-margin:0; margin-bottom:0; padding-bottom:0;">降水乡镇落区预报</p>
+<div style="margin:0; padding:0; line-height:0; font-size:0; mso-line-height-rule:exactly; text-align:center;">
+<div>图片不存在: D:\aiyb\nowcastyb\forecast_rainfall_towns_03h.png</div>
+</div>
+</td></tr>
+<tr style="page-break-inside:avoid; page-break-after:avoid;"><td align="center" style="padding:0; margin:0; border:1px solid #000; vertical-align:top;">
+<p style="margin:0; padding:0; line-height:normal; font-weight:bold; font-size:24px; text-align:center; mso-para-margin:0; margin-bottom:0; padding-bottom:0;">雷雨大风乡镇落区预报</p>
+<div style="margin:0; padding:0; line-height:0; font-size:0; mso-line-height-rule:exactly; text-align:center;">
+<div>图片不存在: D:\aiyb\nowcastyb\forecast_03h_thunder_towns.png</div>
+</div>
+</td></tr>
+</table>
+<p align="right" style="font-size:100%;font-weight:bold;">2026年11月05日09时50分</p>
+<p align="right" style="font-size:100%;font-weight:bold;">黄山市气象台</p>
 </body></html>
